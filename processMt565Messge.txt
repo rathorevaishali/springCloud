@@ -1,0 +1,104 @@
+private SwiftMT565EventIdentificationServiceReturn processMt565Messge(String corporateActionReference,
+                                                                      String finalSecurityId, String idType, String corpActionEventInd, String requestSource, String safeKeepAcc,
+                                                                      String totalEligibleCorpActionBal, String type, String receivedDate, String receivedTime,
+                                                                      String internalBic, String externalBic, String eventId, String cancelOperation,
+                                                                      Multimap<String, String> bicMultiMap, String quantitySecuritiesInstructed, boolean isSwapElection) throws Exception {
+
+    StringBuilder processingStatus = new StringBuilder();
+    boolean isValidEvent = false;
+
+    // Check for NONREF corporate action reference
+    if (NONREF.equalsIgnoreCase(corporateActionReference.trim())) {
+        return processNonRefCorporateAction(finalSecurityId, idType, externalBic, bicMultiMap, processingStatus, isSwapElection);
+    }
+
+    // Validate ISIN and Event ID match if enabled
+    if (enableISINEAMatch && !checkIfIsinAndEventMatch(corporateActionReference, finalSecurityId, idType)) {
+        return logErrorAndReturn(SwiftErrorMessages.EVENT_ID_ISIN_MISMATCH, processingStatus, isSwapElection);
+    }
+
+    // Fetch voluntary events for the security ID
+    List<String> voluntaryEventsForTheSecId = fetchVoluntaryEvents(finalSecurityId, idType, eventId);
+
+    // Check if voluntary events are found
+    if (CollectionUtils.isEmpty(voluntaryEventsForTheSecId)) {
+        return logErrorAndReturn(SwiftErrorMessages.EVENT_IS_MANDATORY_EVENT, processingStatus, isSwapElection);
+    }
+
+    // Filter in-scope events and validate event type code
+    List<String> eventsForCorpActionEventCode = filterAndValidateEvents(voluntaryEventsForTheSecId, corpActionEventInd, processingStatus, isSwapElection);
+    if (CollectionUtils.isEmpty(eventsForCorpActionEventCode)) {
+        return logErrorAndReturn(SwiftErrorMessages.EVENT_TYPECODE_ISIN_MISMATCH, processingStatus, isSwapElection);
+    }
+
+    // Get accounts associated with the events
+    Map<String, List<AccountsPosition>> eventsToAccountMap = getAccountsForEvents(eventsForCorpActionEventCode, requestSource);
+
+    // Check for sub-account and filter events with safekeeping account
+    String selectedEventId = filterEventsWithSafekeepAccount(eventsToAccountMap, safeKeepAcc, eventId, processingStatus, isSwapElection);
+
+    // Perform account and position checks
+    return performAccountAndPositionChecks(corporateActionReference, finalSecurityId, corpActionEventInd, requestSource, safeKeepAcc,
+            totalEligibleCorpActionBal, type, receivedDate, receivedTime, selectedEventId, internalBic, externalBic,
+            eventsToAccountMap, cancelOperation, bicMultiMap, quantitySecuritiesInstructed, isSwapElection);
+}
+
+private SwiftMT565EventIdentificationServiceReturn processNonRefCorporateAction(String finalSecurityId, String idType,
+                                                                               String externalBic, Multimap<String, String> bicMultiMap,
+                                                                               StringBuilder processingStatus, boolean isSwapElection) {
+    List<ExternalProduct> externalProductList = checkIfIsinIsDualListed(finalSecurityId, idType);
+    if (externalProductList.size() > 1 && !isClientEnabled(bicMultiMap, externalBic, SwiftClientFeatureTypes.PROCESS_DUAL_LISTED.getDesc())) {
+        log.info(SwiftErrorMessages.DUAL_LISTED_ISIN.getMessage());
+        processingStatus.append(SwiftErrorMessages.DUAL_LISTED_ISIN.getName());
+        return new SwiftMT565EventIdentificationServiceReturn(processingStatus, SwiftErrorMessages.DUAL_LISTED_ISIN, null, false, null, isSwapElection);
+    } else {
+        Map<String, List<Event>> eventsForGivenSecId = fetchAllEventsForTheProduct(appProdId, externalProductList);
+        List<String> voluntaryEventsForTheSecId = getInformationForMandoEvents(eventsForGivenSecId);
+        return new SwiftMT565EventIdentificationServiceReturn(processingStatus, null, eventsForGivenSecId, true, voluntaryEventsForTheSecId, isSwapElection);
+    }
+}
+
+private SwiftMT565EventIdentificationServiceReturn logErrorAndReturn(SwiftErrorMessages errorMessage, StringBuilder processingStatus, boolean isSwapElection) {
+    log.info(errorMessage.getMessage());
+    processingStatus.append(errorMessage.getName());
+    return new SwiftMT565EventIdentificationServiceReturn(processingStatus, errorMessage, null, false, null, isSwapElection);
+}
+
+private List<String> fetchVoluntaryEvents(String finalSecurityId, String idType, String eventId) {
+    List<String> voluntaryEventsForTheSecId = Lists.newArrayList();
+
+    Set<String> eventIdList = Sets.newHashSet();
+    eventIdList.add(eventId);
+
+    Map<String, List<EventParams<String>>> eventParamsMap = getEventParams(eventIdList, appProdId);
+    List<String> mandatoryEventsFilteredList = filterMandatoryEvent(eventParamsMap);
+
+    voluntaryEventsForTheSecId.addAll(mandatoryEventsFilteredList);
+
+    return voluntaryEventsForTheSecId;
+}
+
+private List<String> filterAndValidateEvents(List<String> voluntaryEventsForTheSecId, String corpActionEventInd,
+                                             StringBuilder processingStatus, boolean isSwapElection) {
+    List<String> eventsForCorpActionEventCode = fetchMatchingEventsWithSwiftEventType(voluntaryEventsForTheSecId, corpActionEventInd);
+    if (CollectionUtils.isEmpty(eventsForCorpActionEventCode)) {
+        log.info(SwiftErrorMessages.EVENT_TYPECODE_ISIN_MISMATCH.getMessage());
+        processingStatus.append(SwiftErrorMessages.EVENT_TYPECODE_ISIN_MISMATCH.getName()).append(
+                "Event :" + voluntaryEventsForTheSecId.toString());
+    }
+    return eventsForCorpActionEventCode;
+}
+
+private String filterEventsWithSafekeepAccount(Map<String, List<AccountsPosition>> eventsToAccountMap,
+                                               String safeKeepAcc, String eventId, StringBuilder processingStatus, boolean isSwapElection) {
+    for (List<AccountsPosition> accountsPositionList : eventsToAccountMap.values()) {
+        if (checkIfSubAccount(accountsPositionList, safeKeepAcc)) {
+            log.info(SwiftErrorMessages.SUB_ACCOUNT.getMessage());
+            processingStatus.append(SwiftErrorMessages.SUB_ACCOUNT.getName());
+            return eventId;
+        }
+    }
+    Map<String, List<AccountsPosition>> eventsWithSafekeepAcct = filterNonSafeKeepAccEvents(eventsToAccountMap, safeKeepAcc);
+    List<String> eventIdList = Lists.newArrayList(eventsWithSafekeepAcct.keySet());
+    return getEventIdFromList(eventIdList);
+}
