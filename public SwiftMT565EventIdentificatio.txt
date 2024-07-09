@@ -8,17 +8,37 @@ public SwiftMT565EventIdentificationServiceReturn invoke(SwiftMT565EventIdentifi
     Boolean isSwapElection = false;
 
     Multimap<String, String> bicMultiMap = getBicsForFeatureMap();
-    validateExcludedBic(input.getExternalBic(), bicMultiMap);
-    validateAccountInfo(input.getSafeKeepAccEightDigit());
-    validateBicAndAccount(input.getExternalBic(), input.getSafeKeepAccEightDigit(), enableBicValidations);
-    validateEventType(input.getCorpActionEventInd());
-    validateSecurityId(input.getSecurityId(), processingStatus, eventId, isSwapElection);
-    validateEventId(input.getCorporateActionReference(), processingStatus, eventId, isSwapElection);
-    validatePositionInfo(input.getTotalEligibleCorpActionBal(), input.getQuantitySecuritiesInstructed(), processingStatus, eventId, isSwapElection);
-    validateShortPosition(input.getType(), input.getTotalEligibleCorpActionBal(), processingStatus, eventId, isSwapElection);
-    validateAccountStatus(input.getSafeKeepAccEightDigit(), processingStatus, eventId, isSwapElection);
 
-    return processMt565Messge(
+    SwiftMT565EventIdentificationServiceReturn returnObject;
+
+    returnObject = validateExcludedBic(input.getExternalBic(), bicMultiMap);
+    if (returnObject != null) return returnObject;
+
+    returnObject = validateAccountInfo(input.getSafeKeepAccEightDigit());
+    if (returnObject != null) return returnObject;
+
+    returnObject = validateBicAndAccount(input.getExternalBic(), input.getSafeKeepAccEightDigit(), enableBicValidations, input.getCorpActionEventInd());
+    if (returnObject != null) return returnObject;
+
+    returnObject = validateEventType(input.getCorpActionEventInd());
+    if (returnObject != null) return returnObject;
+
+    returnObject = validateSecurityId(input.getSecurityId(), processingStatus, eventId, isSwapElection);
+    if (returnObject != null) return returnObject;
+
+    returnObject = validateEventId(input.getCorporateActionReference(), processingStatus, eventId, isSwapElection);
+    if (returnObject != null) return returnObject;
+
+    returnObject = validatePositionInfo(input.getTotalEligibleCorpActionBal(), input.getQuantitySecuritiesInstructed(), processingStatus, eventId, isSwapElection);
+    if (returnObject != null) return returnObject;
+
+    returnObject = validateShortPosition(input.getType(), input.getTotalEligibleCorpActionBal(), processingStatus, eventId, isSwapElection);
+    if (returnObject != null) return returnObject;
+
+    returnObject = validateAccountStatus(input.getSafeKeepAccEightDigit(), processingStatus, eventId, isSwapElection);
+    if (returnObject != null) return returnObject;
+
+    return processMt565Message(
             input.getCorporateActionReference(), getSecurityId(input.getSecurityId()), getSecurityIdType(input.getSecurityId()),
             input.getCorpActionEventInd(), getRequestSource(), getSafeKeepAccount(input.getSafeKeepAccEightDigit()),
             input.getTotalEligibleCorpActionBal(), input.getType(), input.getReceivedDate(), input.getReceivedTime(),
@@ -27,83 +47,91 @@ public SwiftMT565EventIdentificationServiceReturn invoke(SwiftMT565EventIdentifi
     );
 }
 
-private void validateExcludedBic(String externalBic, Multimap<String, String> bicMultiMap) {
+private SwiftMT565EventIdentificationServiceReturn validateExcludedBic(String externalBic, Multimap<String, String> bicMultiMap) {
     if (isClientEnabled(bicMultiMap, externalBic, SwiftClientFeatureTypes.EXCLUDE_MESSAGE.getDesc())) {
         log.info("Rejecting message from Swift side as the message is from a BIC which falls under the category of EXCLUDE_MT565");
-        throw new ExcludedMessage("Found a message from a BIC which falls under the category of EXCLUDE_MT565");
+        return logError(SwiftErrorMessages.EXCLUDE_MT565, new StringBuilder(), null, false);
     }
+    return null;
 }
 
-private void validateAccountInfo(String safeKeepAccEightDigit) {
+private SwiftMT565EventIdentificationServiceReturn validateAccountInfo(String safeKeepAccEightDigit) {
     if (StringUtils.isBlank(safeKeepAccEightDigit)) {
-        throw logError(SwiftErrorMessages.NO_ACCOUNT_PRESENT, new StringBuilder(), null, false);
+        return logError(SwiftErrorMessages.NO_ACCOUNT_PRESENT, new StringBuilder(), null, false);
     }
+    return null;
 }
 
-private void validateBicAndAccount(String externalBic, String safeKeepAccEightDigit, String enableBicValidations) {
+private SwiftMT565EventIdentificationServiceReturn validateBicAndAccount(String externalBic, String safeKeepAccEightDigit, String enableBicValidations, String corpActionEventInd) {
     if (StringUtils.equalsIgnoreCase(YesOrNo.Yes.getCode(), enableBicValidations)) {
         if (StringUtils.isBlank(externalBic)) {
-            throw logError(SwiftErrorMessages.NO_CLIENT_BIC_PRESENT, new StringBuilder(), null, false);
+            return logError(SwiftErrorMessages.NO_CLIENT_BIC_PRESENT, new StringBuilder(), null, false);
         }
         if (!checkifClientEnabledForMT565(externalBic)) {
-            if (StringUtils.isNotBlank(input.getCorpActionEventInd())
-                    && AsrvEventUtils.isMeetingOrFyiEventType(input.getCorpActionEventInd())) {
+            if (StringUtils.isNotBlank(corpActionEventInd) && AsrvEventUtils.isMeetingOrFyiEventType(corpActionEventInd)) {
                 log.info("Rejecting message from Swift side as we have found Meeting event for a non MT565 bic");
-                throw new ExcludedMessage("Found Meeting event for a non MT565 bic, messgage ignored.");
+                return logError(SwiftErrorMessages.MEETING_EVENT_NON_MT565_BIC, new StringBuilder(), null, false);
             }
-            throw logError(SwiftErrorMessages.CLIENT_NOT_SET_TO_PROCESS_MT565, new StringBuilder(), null, false);
+            return logError(SwiftErrorMessages.CLIENT_NOT_SET_TO_PROCESS_MT565, new StringBuilder(), null, false);
         }
     }
+    return null;
 }
 
-private void validateEventType(String corpActionEventInd) {
+private SwiftMT565EventIdentificationServiceReturn validateEventType(String corpActionEventInd) {
     if (StringUtils.isBlank(corpActionEventInd)) {
-        throw logError(SwiftErrorMessages.NO_EVENT_TYPE_PRESENT, new StringBuilder(), null, false);
+        return logError(SwiftErrorMessages.NO_EVENT_TYPE_PRESENT, new StringBuilder(), null, false);
     }
 
     if (AsrvEventUtils.isMeetingOrFyiEventType(corpActionEventInd)) {
-        throw logError(SwiftErrorMessages.MEETING_EVENTS, new StringBuilder(), null, false);
+        return logError(SwiftErrorMessages.MEETING_EVENTS, new StringBuilder(), null, false);
     }
+    return null;
 }
 
-private void validateSecurityId(String securityId, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
+private SwiftMT565EventIdentificationServiceReturn validateSecurityId(String securityId, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
     try {
         String idType = getSecurityType(securityId);
         String finalSecurityId = getSecurityId(securityId, idType);
         if (StringUtils.isBlank(idType) || StringUtils.isBlank(finalSecurityId)) {
-            throw logError(SwiftErrorMessages.WRONG_ID_TYPE, processingStatus, null, isSwapElection);
+            return logError(SwiftErrorMessages.WRONG_ID_TYPE, processingStatus, null, isSwapElection);
         }
     } catch (Exception ex) {
-        throw logError(SwiftErrorMessages.WRONG_ID_TYPE, processingStatus, null, isSwapElection);
+        return logError(SwiftErrorMessages.WRONG_ID_TYPE, processingStatus, null, isSwapElection);
     }
+    return null;
 }
 
-private void validateEventId(String corporateActionReference, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
+private SwiftMT565EventIdentificationServiceReturn validateEventId(String corporateActionReference, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
     if (StringUtils.isNotBlank(corporateActionReference)) {
         eventId = getEventIdFromEaid(corporateActionReference.trim());
     } else {
-        throw logError(SwiftErrorMessages.NO_EAID_PRESENT, processingStatus, null, isSwapElection);
+        return logError(SwiftErrorMessages.NO_EAID_PRESENT, processingStatus, null, isSwapElection);
     }
+    return null;
 }
 
-private void validatePositionInfo(String totalEligibleCorpActionBal, String quantitySecuritiesInstructed, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
+private SwiftMT565EventIdentificationServiceReturn validatePositionInfo(String totalEligibleCorpActionBal, String quantitySecuritiesInstructed, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
     if (StringUtils.isBlank(totalEligibleCorpActionBal) && StringUtils.isBlank(quantitySecuritiesInstructed)) {
-        throw logError(SwiftErrorMessages.NO_POSITIONS_PRESENT, processingStatus, eventId, isSwapElection);
+        return logError(SwiftErrorMessages.NO_POSITIONS_PRESENT, processingStatus, eventId, isSwapElection);
     }
+    return null;
 }
 
-private void validateShortPosition(String type, String totalEligibleCorpActionBal, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
+private SwiftMT565EventIdentificationServiceReturn validateShortPosition(String type, String totalEligibleCorpActionBal, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
     boolean isShort = checkShortPosition(type, totalEligibleCorpActionBal);
     if (isShort) {
-        throw logError(SwiftErrorMessages.SHORT_POSITIONS, processingStatus, eventId, isSwapElection);
+        return logError(SwiftErrorMessages.SHORT_POSITIONS, processingStatus, eventId, isSwapElection);
     }
+    return null;
 }
 
-private void validateAccountStatus(String safeKeepAcc, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
+private SwiftMT565EventIdentificationServiceReturn validateAccountStatus(String safeKeepAcc, StringBuilder processingStatus, String eventId, Boolean isSwapElection) {
     SwiftErrorMessages accountStatusError = checkAccountStatus(safeKeepAcc);
     if (accountStatusError != null) {
-        throw logError(accountStatusError, processingStatus, eventId, isSwapElection);
+        return logError(accountStatusError, processingStatus, eventId, isSwapElection);
     }
+    return null;
 }
 
 private String getSecurityId(String securityId) {
@@ -120,3 +148,5 @@ private String getSecurityIdType(String securityId) {
     if (StringUtils.isBlank(idType)) {
         throw logError(SwiftErrorMessages.WRONG_ID_TYPE, new StringBuilder(), null, false);
     }
+    return idType;
+}
