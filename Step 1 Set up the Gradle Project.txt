@@ -1,0 +1,679 @@
+Step 1: Set up the Gradle Project
+Create a new Gradle project: You can do this using your IDE or the command line. For simplicity, I'll outline the command-line approach.
+
+bash
+Copy code
+mkdir SpringBootJWT
+cd SpringBootJWT
+gradle init --type java-application
+Update build.gradle: Add necessary dependencies for Spring Boot and JWT support. Open build.gradle and modify it as follows:
+
+groovy
+Copy code
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.5.2'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'io.jsonwebtoken:jjwt:0.9.1' // JWT library
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+// Optional: If you want to enable the Spring Boot plugin
+bootJar {
+    enabled = true
+}
+This configuration includes Spring Boot Web for REST endpoints (spring-boot-starter-web), Spring Security (spring-boot-starter-security), and JWT (jjwt).
+
+Sync Gradle project: If you've made changes to build.gradle, sync your Gradle project to download the dependencies.
+
+bash
+Copy code
+gradle build
+Step 2: Create a Spring Boot Application
+Create main application class: Create a Java class for your Spring Boot application, typically named Application.java.
+
+java
+Copy code
+package com.example.demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+Step 3: Implement Security Configuration
+Security Configuration: Create a class to configure security and JWT token handling.
+
+java
+Copy code
+package com.example.demo.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+            .authorizeRequests()
+            .antMatchers("/api/**").authenticated()
+            .anyRequest().permitAll()
+            .and()
+            .addFilterBefore(new JwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        // Configure your authentication manager
+        // Example: auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
+    }
+
+    @Bean
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public JwtTokenProvider jwtTokenProvider() {
+        return new JwtTokenProvider(); // Your JWT token provider class
+    }
+}
+Here, JwtAuthenticationFilter is a class you will implement to validate JWT tokens sent in the request header.
+
+Implement JwtAuthenticationFilter: Create a class to handle JWT authentication. This class should extend OncePerRequestFilter and validate the JWT token.
+
+java
+Copy code
+package com.example.demo.security;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        try {
+            String jwt = extractJwtFromRequest(request); // Implement method to extract JWT token
+            if (jwt != null && jwtTokenProvider.validateToken(jwt)) { // Implement JwtTokenProvider
+                Authentication auth = jwtTokenProvider.getAuthentication(jwt);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
+        } catch (Exception e) {
+            logger.error("Cannot set user authentication: {}", e);
+        }
+        filterChain.doFilter(request, response);
+    }
+
+    private String extractJwtFromRequest(HttpServletRequest request) {
+        // Extract the JWT token from the request headers
+        // Example: String bearerToken = request.getHeader("Authorization");
+        // Then extract the token part after "Bearer "
+        return null;
+    }
+}
+Ensure you implement JwtTokenProvider and extractJwtFromRequest methods according to your JWT token structure and validation logic.
+
+Step 4: Create a REST Controller
+Create a REST Controller: Implement a controller to handle POST requests.
+
+java
+Copy code
+package com.example.demo.controllers;
+
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class ApiController {
+
+    @PostMapping("/api/resource")
+    public String securedResource(@RequestBody String data) {
+        return "This is a secured API resource. Data received: " + data;
+    }
+}
+This controller method (securedResource) is protected by JWT authentication.
+
+Step 5: Run and Test the Application
+Run the Application: Start your Spring Boot application.
+
+bash
+Copy code
+gradle bootRun
+Test the Endpoint: Use tools like Postman to send a POST request to http://localhost:8080/api/resource with the JWT token in the Authorization header.
+
+Example JWT token:
+
+Copy code
+Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+Ensure your JWT token is valid and correctly parsed by the JwtAuthenticationFilter.
+
+Conclusion
+This setup provides a basic Spring Boot application that accepts a POST request with a JWT token. Ensure you customize the JWT token handling (JwtTokenProvider and JwtAuthenticationFilter) and security configurations (SecurityConfig) according to your application's requirements and token validation logic.
+
+"AdhocStatusRequesta": { "Environment": "0.4", "Userid": "jamieb",
+"RequestSource": "ASRV_NR",
+"event": {
+"caldNb":
+"4Wfp8DhEEe-VTwBQVgPOBQA",
+"approvalChange": "true",
+"approvalType": "CSR",
+"approvalStatus": "Rejected"
+}
+}
+ChatGPT
+It looks like you've provided a JSON payload for an "AdhocStatusRequesta" object. If you're looking to understand or process this JSON structure within a Spring Boot application, you can create Java classes to map this JSON structure and handle it accordingly. Here's how you can define the corresponding Java classes and set up a Spring Boot application to accept and process such JSON payloads.
+
+Step 1: Define Java Classes
+Create Java classes that represent the structure of your JSON payload.
+
+AdhocStatusRequesta.java (Note: Fix the typo in "AdhocStatusRequesta" to "AdhocStatusRequest" for correct naming):
+
+java
+Copy code
+package com.example.demo.model;
+
+public class AdhocStatusRequest {
+
+    private String Environment;
+    private String Userid;
+    private String RequestSource;
+    private Event event;
+
+    // Getters and setters
+
+    public String getEnvironment() {
+        return Environment;
+    }
+
+    public void setEnvironment(String environment) {
+        Environment = environment;
+    }
+
+    public String getUserid() {
+        return Userid;
+    }
+
+    public void setUserid(String userid) {
+        Userid = userid;
+    }
+
+    public String getRequestSource() {
+        return RequestSource;
+    }
+
+    public void setRequestSource(String requestSource) {
+        RequestSource = requestSource;
+    }
+
+    public Event getEvent() {
+        return event;
+    }
+
+    public void setEvent(Event event) {
+        this.event = event;
+    }
+
+    @Override
+    public String toString() {
+        return "AdhocStatusRequest{" +
+                "Environment='" + Environment + '\'' +
+                ", Userid='" + Userid + '\'' +
+                ", RequestSource='" + RequestSource + '\'' +
+                ", event=" + event +
+                '}';
+    }
+}
+Event.java:
+
+java
+Copy code
+package com.example.demo.model;
+
+public class Event {
+
+    private String caldNb;
+    private String approvalChange;
+    private String approvalType;
+    private String approvalStatus;
+
+    // Getters and setters
+
+    public String getCaldNb() {
+        return caldNb;
+    }
+
+    public void setCaldNb(String caldNb) {
+        this.caldNb = caldNb;
+    }
+
+    public String getApprovalChange() {
+        return approvalChange;
+    }
+
+    public void setApprovalChange(String approvalChange) {
+        this.approvalChange = approvalChange;
+    }
+
+    public String getApprovalType() {
+        return approvalType;
+    }
+
+    public void setApprovalType(String approvalType) {
+        this.approvalType = approvalType;
+    }
+
+    public String getApprovalStatus() {
+        return approvalStatus;
+    }
+
+    public void setApprovalStatus(String approvalStatus) {
+        this.approvalStatus = approvalStatus;
+    }
+
+    @Override
+    public String toString() {
+        return "Event{" +
+                "caldNb='" + caldNb + '\'' +
+                ", approvalChange='" + approvalChange + '\'' +
+                ", approvalType='" + approvalType + '\'' +
+                ", approvalStatus='" + approvalStatus + '\'' +
+                '}';
+    }
+}
+Step 2: Create a Controller to Handle POST Requests
+Create a Spring MVC controller to handle incoming POST requests with JSON payloads.
+
+AdhocStatusController.java:
+
+java
+Copy code
+package com.example.demo.controllers;
+
+import com.example.demo.model.AdhocStatusRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class AdhocStatusController {
+
+    @PostMapping("/adhoc-status")
+    public ResponseEntity<String> processAdhocStatusRequest(@RequestBody AdhocStatusRequest request) {
+        // Process the AdhocStatusRequest object here
+        System.out.println("Received AdhocStatusRequest: " + request.toString());
+
+        // Example response
+        String responseMessage = "Received AdhocStatusRequest successfully";
+        return new ResponseEntity<>(responseMessage, HttpStatus.OK);
+    }
+}
+Step 3: Configure Spring Boot Application
+Ensure your Spring Boot application is configured correctly to handle web requests.
+
+Application.java:
+
+java
+Copy code
+package com.example.demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+Step 4: Test the Endpoint
+Once your application is running, you can test it using tools like Postman or curl. Send a POST request to http://localhost:8080/adhoc-status with the JSON payload you provided:
+
+json
+Copy code
+{
+  "Environment": "0.4",
+  "Userid": "jamieb",
+  "RequestSource": "ASRV_NR",
+  "event": {
+    "caldNb": "4Wfp8DhEEe-VTwBQVgPOBQA",
+    "approvalChange": "true",
+    "approvalType": "CSR",
+    "approvalStatus": "Rejected"
+  }
+}
+Ensure your Spring Boot application correctly receives and processes this JSON payload according to your business logic.
+
+Summary
+This setup allows you to create a Spring Boot application that accepts POST requests with a JSON payload structured like the one you provided. Make sure to customize the handling logic in AdhocStatusController based on your application's requirements.
+
+process this request JWT token
+ChatGPT
+To process the request along with a JWT token in a Spring Boot application, you'll need to integrate JWT authentication and authorization. Below, I'll guide you through modifying the previous example to include JWT token processing.
+
+Step 1: Update Security Configuration
+Modify the security configuration in your Spring Boot application to authenticate and authorize requests based on JWT tokens.
+
+SecurityConfig.java:
+
+java
+Copy code
+package com.example.demo.security;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+            .authorizeRequests()
+            .antMatchers("/authenticate").permitAll() // Permit access to /authenticate endpoint
+            .antMatchers(HttpMethod.POST, "/adhoc-status").authenticated() // Require authentication for POST requests to /adhoc-status
+            .anyRequest().permitAll()
+            .and()
+            .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
+    }
+
+    @Bean
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public JwtTokenProvider jwtTokenProvider() {
+        return new JwtTokenProvider(); // Your JWT token provider class
+    }
+}
+Explanation:
+The SecurityConfig class is responsible for configuring Spring Security.
+It disables CSRF protection for simplicity (you might want to enable it depending on your application's needs).
+It permits access to the /authenticate endpoint without authentication. This endpoint should be used to generate and return JWT tokens.
+It requires authentication (authenticated()) for POST requests to /adhoc-status.
+It adds a custom JwtAuthenticationFilter before the standard UsernamePasswordAuthenticationFilter to validate JWT tokens sent with requests.
+JwtTokenProvider.java:
+
+You need to implement the JwtTokenProvider class to generate, validate, and extract JWT tokens. Here's a basic example:
+
+java
+Copy code
+package com.example.demo.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+
+import java.util.Date;
+
+@Component
+public class JwtTokenProvider {
+
+    @Value("${app.jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${app.jwt.expiration}")
+    private int jwtExpirationInMs;
+
+    public String generateToken(Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
+
+        return Jwts.builder()
+                .setSubject(Long.toString(userPrincipal.getId()))
+                .setIssuedAt(new Date())
+                .setExpiration(expiryDate)
+                .signWith(SignatureAlgorithm.HS512, jwtSecret)
+                .compact();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token);
+            return true;
+        } catch (Exception ex) {
+            // Log exception
+        }
+        return false;
+    }
+
+    public Long getUserIdFromJWT(String token) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(jwtSecret)
+                .parseClaimsJws(token)
+                .getBody();
+
+        return Long.parseLong(claims.getSubject());
+    }
+}
+Explanation:
+JwtTokenProvider is a component responsible for generating, validating, and parsing JWT tokens.
+generateToken() method creates a new JWT token based on the UserPrincipal (custom UserDetails implementation) obtained from the authenticated Authentication object.
+validateToken() method checks if the given token is valid by parsing it using the secret key (jwtSecret).
+getUserIdFromJWT() extracts the user ID from a valid JWT token.
+JwtAuthenticationFilter.java:
+
+Implement the JwtAuthenticationFilter class to intercept incoming requests and validate JWT tokens:
+
+java
+Copy code
+package com.example.demo.security;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private JwtTokenProvider jwtTokenProvider;
+
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+        this.jwtTokenProvider = jwtTokenProvider;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        try {
+            String jwt = getJwtFromRequest(request);
+
+            if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
+                Long userId = jwtTokenProvider.getUserIdFromJWT(jwt);
+                UserPrincipal userDetails = // Fetch user details based on userId, e.g., from database
+
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (Exception ex) {
+            // Log exception
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private String getJwtFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7); // Remove "Bearer " prefix
+        }
+        return null;
+    }
+}
+Explanation:
+JwtAuthenticationFilter extends OncePerRequestFilter to intercept each incoming request once.
+doFilterInternal() extracts the JWT token from the request header (Authorization).
+If the token is valid (validateToken() returns true), it sets the Authentication in the SecurityContextHolder.
+getJwtFromRequest() method extracts the JWT token from the Authorization header.
+Step 2: Update Controller to Use JWT Authentication
+Modify the controller to include JWT authentication in your endpoint.
+
+AdhocStatusController.java:
+
+java
+Copy code
+package com.example.demo.controllers;
+
+import com.example.demo.model.AdhocStatusRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class AdhocStatusController {
+
+    @PostMapping("/adhoc-status")
+    public ResponseEntity<String> processAdhocStatusRequest(@RequestBody AdhocStatusRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUser = authentication.getName();
+
+        // Implement your business logic here
+        System.out.println("Received AdhocStatusRequest from user " + currentUser + ": " + request.toString());
+
+        // Example response
+        String responseMessage = "Received AdhocStatusRequest successfully";
+        return new ResponseEntity<>(responseMessage, HttpStatus.OK);
+    }
+}
+Explanation:
+processAdhocStatusRequest() method now uses SecurityContextHolder to retrieve the authenticated user (currentUser).
+You can use currentUser to implement any authorization or auditing logic based on the authenticated user.
+Step 3: Generate JWT Token
+You need a mechanism to generate JWT tokens when users authenticate. Typically, this involves creating an /authenticate endpoint that returns a JWT token upon successful authentication.
+
+AuthenticationController.java:
+
+java
+Copy code
+package com.example.demo.controllers;
+
+import com.example.demo.model.UserPrincipal;
+import com.example.demo.security.JwtTokenProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class AuthenticationController {
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @PostMapping("/authenticate")
+    public ResponseEntity<?> authenticateUser(@RequestBody UserPrincipal userPrincipal) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(userPrincipal.getUsername(), userPrincipal.getPassword())
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String jwt = jwtTokenProvider.generateToken(authentication);
+        return ResponseEntity.ok(new JwtAuthenticationResponse(jwt));
+    }
+}
+Explanation:
+authenticateUser() method takes UserPrincipal (username and password) as input for authentication.
+It uses AuthenticationManager to authenticate the user.
+If authentication is successful, it sets the authenticated Authentication object in SecurityContextHolder.
+It generates a JWT token using JwtTokenProvider and returns it in the response (JwtAuthenticationResponse is a custom class to encapsulate the JWT token).
+Summary
+By following these steps, you can integrate JWT token-based authentication and authorization into your Spring Boot application. Ensure to customize the JWT token generation and validation logic (JwtTokenProvider) based on your security requirements. The controllers (AdhocStatusController and AuthenticationController) are updated to handle authenticated requests and generate JWT tokens respectively. This setup provides a secure way to process requests with JWT tokens in your application.
