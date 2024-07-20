@@ -1,0 +1,93 @@
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Technical Design Document</title>
+      <style>
+          body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              margin: 20px;
+              padding: 20px;
+              background-color: #f4f4f4;
+              color: #333;
+          }
+          h1, h2, h3 {
+              color: #0056b3;
+          }
+          h1 {
+              border-bottom: 2px solid #0056b3;
+              padding-bottom: 10px;
+          }
+          h2 {
+              margin-top: 20px;
+          }
+          h3 {
+              margin-top: 15px;
+          }
+          p {
+              margin: 10px 0;
+          }
+          ul {
+              margin: 10px 0 10px 20px;
+          }
+          li {
+              margin-bottom: 5px;
+          }
+      </style>
+  </head>
+  <body>
+      <h1>Technical Design Document</h1>
+      
+      <h2>Introduction</h2>
+      
+      <h3>Purpose</h3>
+      <p>The current workflow for cash equity voluntary corporate action events requires Prime Brokerage clients (MSCO & MSIP) to provide an election prior to the deadline. However, some clients do not actively engage in this process and prefer the market default option to be applied in the absence of an election.</p>
+      
+      <h3>Purpose Solution</h3>
+      <p>To optimize these processes, reduce communication noise to clients, and enhance operational efficiencies, we are developing a solution specifically for cash equity voluntary events. This solution will enhance the incumbent process and create a Bulk Action Function for PSCSGNY to apply the event default option on Long positions and maintain Short positions once the MS Deadline (DDL) has passed.</p>
+      
+      <h2>Scope</h2>
+      <ul>
+          <li><strong>Client Focus:</strong> MSCO Clients Only</li>
+          <li><strong>Event Types:</strong> Long & Short Positions</li>
+          <li><strong>Geographical Coverage:</strong> US & CAD voluntary events</li>
+      </ul>
+
+      <h2>Benefits of Proposed Changes</h2>
+      
+      <h3>Client Satisfaction</h3>
+      <ul>
+          <li><strong>Reduction in Notification Noise:</strong>
+              <p>Streamlining communication leading up to deadlines reduces unnecessary notifications, enhancing client experience.</p>
+          </li>
+          <li><strong>Application of Event Default Option:</strong>
+              <p>Clients can either accept the default option or remain short, providing flexibility and clarity.</p>
+          </li>
+      </ul>
+      
+      <h3>Operational Efficiencies</h3>
+      <h4>Time Savings for PS Ops and Business Units:</h4>
+      <ul>
+          <li><strong>Processing Time Reduction:</strong> Minimizing the time spent on processing client elections.</li>
+          <li><strong>Chasing for Client Elections:</strong> Less time spent following up on client decisions.</li>
+      </ul>
+
+      <h4>Operational Support for ASRV:</h4>
+      <ul>
+          <li>Implementing a bulk action button in ASRV allows Ops to apply the event default option to all fully unelected positions in one go, post-deadline.</li>
+          <li><strong>Partial Elections:</strong> Existing processes will remain for partial elections, ensuring consistency.</li>
+      </ul>
+
+      <h4>User Alerts and Overrides:</h4>
+      <ul>
+          <li>Pop-up alerts will confirm with Ops before proceeding, ensuring intentional actions are taken.</li>
+          <li>Manual overrides will be available at the account level if necessary, maintaining flexibility while adhering to existing processes.</li>
+      </ul>
+
+      <h3>Internal and External CANS Notifications</h3>
+      <h4>Email Notifications:</h4>
+      <p>Upon applying the bulk default option, a new email notification will replace the "Confirmation of Response" to provide clearer communication regarding the changes made.</p>
+  </body>
+  </html>
