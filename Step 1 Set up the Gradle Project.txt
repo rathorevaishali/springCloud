@@ -1,4 +1,4 @@
-Step 1: Set up the Gradle Project
+jiStep 1: Set up the Gradle Project
 Create a new Gradle project: You can do this using your IDE or the command line. For simplicity, I'll outline the command-line approach.
 
 bash
@@ -677,3 +677,23 @@ If authentication is successful, it sets the authenticated Authentication object
 It generates a JWT token using JwtTokenProvider and returns it in the response (JwtAuthenticationResponse is a custom class to encapsulate the JWT token).
 Summary
 By following these steps, you can integrate JWT token-based authentication and authorization into your Spring Boot application. Ensure to customize the JWT token generation and validation logic (JwtTokenProvider) based on your security requirements. The controllers (AdhocStatusController and AuthenticationController) are updated to handle authenticated requests and generate JWT tokens respectively. This setup provides a secure way to process requests with JWT tokens in your application.
+
+Hello everyone,
+
+As today marks my last day at Morgan Stanley, I want to take a moment to reflect on these past two years with Asset Servicing. It has been an incredible journey filled with learning, growth, and support, and I’m immensely grateful to all of you.
+
+Thank you to the entire team for giving me the opportunity to grow and learn within Morgan Stanley and the ASRV team.
+
+I am truly thankful to the Devsena squad for their unwavering support and motivation throughout these two years.
+
+I cannot express enough gratitude for the guidance I have received from everyone. Your support has significantly contributed to my professional growth and development. From offering me opportunities to work on major projects to encouraging me to showcase our work, you have all played a part in shaping my career.
+
+I’ve learned so much from each of you, and your technical expertise, patience, and dedication continue to inspire me. Working with you has been an absolute pleasure, and I will carry the lessons and memories forward with me.
+
+To those continuing with the team, I wish you all the best in your careers. I have no doubt you’ll continue to excel and enjoy your journey with Devsena.
+
+Thank you once again for the guidance, support, and wonderful memories. I wish you all the very best moving forward!
+
+Warm regards,
+Vaishali Rathore
+
