@@ -1,3 +1,9 @@
+
+Devendra, I can't express enough gratitude for your guidance as a manager. You’ve given me opportunities to work on major projects, and your encouragement to present our work has significantly contributed to my professional growth. Thank you for always being a source of inspiration.
+
+
+
+
 nojiStep 1: Set up the Gradle Project
 Create a new Gradle project: You can do this using your IDE or the command line. For simplicity, I'll outline the command-line approach.
 
