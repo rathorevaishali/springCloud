@@ -1,4 +1,4 @@
-jiStep 1: Set up the Gradle Project
+nojiStep 1: Set up the Gradle Project
 Create a new Gradle project: You can do this using your IDE or the command line. For simplicity, I'll outline the command-line approach.
 
 bash
@@ -706,6 +706,56 @@ Once again, thank you for the guidance, support, and the wonderful memories we�
 
 Warm regards,
 Vaishali Rathore
+
+Hello everyone,
+
+As today marks my last day at Morgan Stanley, I want to take a moment to reflect on these past two years with Asset Servicing. It's been an incredible journey filled with learning, growth, and support, and I’m immensely grateful to all of you.
+
+A special thank you to Kaysar and Pawan for giving me the opportunity to grow and learn within Morgan Stanley and the ASRV team.
+
+I am truly thankful to the Devsena squad for their unwavering support and motivation throughout these two years.
+
+Devendra, I can't express enough gratitude for your guidance as a manager. You’ve given me opportunities to work on major projects, and your encouragement to present our work has significantly contributed to my professional growth. Thank you for always being a source of inspiration.
+
+Disha, you have been an inspiration to me, both technically and personally. Your support in clearing my doubts has been invaluable, and I am always in awe of your expertise.
+
+Vivek, thank you for being so patient and kind. Your vast knowledge of ASRV continues to amaze me, and I hope to carry forward that same depth of understanding in my future endeavors.
+
+Nikita, your assistance during my early days in Devsena was much appreciated. You were always kind and helpful, and working with you has been a pleasure.
+
+Vaishali, I’ve learned so much from you, especially about responsibility and sincerity during releases. Your dedication is something I strive to achieve.
+
+Suviya, Easak, Pooja, Nitesh, Krishnaveni, and Radhika—it was a pleasure working with all of you. Wishing you the best in your careers with the team; I have no doubt you’ll continue to excel and have a great time in Devsena.
+
+Thank you all once again for the guidance, support, and wonderful memories. I wish you all the very best moving forward!
+
+Warm regards,
+Vaishali Rathore
+
+How does this version feel to you?
+
+
+
+
+
+
+You said:
+remove special mention 
+ChatGPT said:
+ChatGPT
+Here’s the revised version without the special mentions:
+
+Hello everyone,
+
+As today marks my last day at Morgan Stanley, I want to take a moment to reflect on these past two years with Asset Servicing. It has been an incredible journey filled with learning, growth, and support, and I’m immensely grateful to all of you.
+
+Thank you to the entire team for giving me the opportunity to grow and learn within Morgan Stanley and the ASRV team.
+
+I am truly thankful to the Devsena squad for their unwavering support and motivation throughout these two years.
+
+I cannot express enough gr
+
+
 
 
 
