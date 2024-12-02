@@ -83,3 +83,25 @@ public class PIIDataAccessAspect {
         System.out.println("Detected Privacy Tags: " + detectedTags);
     }
 }
+
+
+public enum PrivacyTag {
+    SENSITIVE_DEMOGRAPHIC_INFO,
+    SENSITIVE_BACKGROUND_INFO,
+    HEALTH_INFO,
+    BIOMETRIC_INFO,
+    FINANCIAL_ACCT_NO,
+    CREDIT_DEBIT_CARD_NO,
+    PARTIAL_CREDIT_DEBIT_CARD_NO,
+    PERSONAL_FINANCIAL_INFO,
+    SENSITIVE_PERSONAL_FINANCIAL_INFO;
+
+    public static String detectTag(String value) {
+        for (PrivacyTag tag : PrivacyTag.values()) {
+            if (value.toUpperCase().contains(tag.name())) {
+                return tag.name();
+            }
+        }
+        return null;
+    }
+}
