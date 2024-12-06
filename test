@@ -125,3 +125,12 @@ public class ProtoPrivacyTagExtractor {
     return false;
 }
 }
+.....
+  case OBJECT:
+                        // Handle generic Object fields (custom objects)
+                        final Object fieldValue = protoMessage.getField(fieldDescriptor);
+                        if (fieldValue != null) {
+                            // Add logic to inspect or process the custom object
+                            allowedAttributes.add(fieldDescriptor.getJsonName());
+                        }
+                        break;
