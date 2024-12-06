@@ -1,13 +1,3 @@
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 public class ProtoPrivacyTagExtractor {
 
     private final Map<String, Set<String>> privacyTagConfig = new HashMap<>();
@@ -33,7 +23,7 @@ public class ProtoPrivacyTagExtractor {
                         final Object nestedFieldValue = protoMessage.getField(fieldDescriptor);
                         if (fieldDescriptor.isRepeated()) {
                             // Repeated nested objects (list of messages)
-                            if (nestedFieldValue instanceof List<?>) {
+                            if (nestedFieldValue instanceof List) {
                                 for (Object nested : (List<?>) nestedFieldValue) {
                                     if (nested instanceof Message) {
                                         allowedAttributes.addAll(processNestedMessage(fieldDescriptor, (Message) nested));
@@ -92,4 +82,46 @@ public class ProtoPrivacyTagExtractor {
 
     private Set<String> processNestedMessage(Descriptors.FieldDescriptor fieldDescriptor, Message nestedMessage) {
         Set<String> nestedAttributes = new HashSet<>();
-        extractPrivacyTags(nestedMe
+        extractPrivacyTags(nestedMessage).forEach((nestedClass, nestedFields) -> {
+            nestedFields.forEach(field -> nestedAttributes.add(fieldDescriptor.getJsonName() + "." + field));
+        });
+        return nestedAttributes;
+    }
+
+    private boolean isFieldPii(final Descriptors.FieldDescriptor fieldDescriptor) {
+        boolean isPii = false;
+
+        // Check field-level options for PII
+        if (!fieldDescriptor.getOptions().getAllFields().isEmpty()) {
+            for (final Map.Entry<Descriptors.FieldDescriptor, Object> entry :
+                    fieldDescriptor.getOptions().getAllFields().entrySet()) {
+                if (entry.getKey() instanceof Descriptors.FieldDescriptor && entry.getValue() instanceof Message fieldInfoOption) {
+                    isPii = checkFieldPii(fieldInfoOption); // Check PII flag in field-level options
+                }
+            }
+        }
+
+        return isPii || nonPiiDefaultAllowList.contains(fieldDescriptor.getJsonName());
+    }
+
+   private boolean checkFieldPii(final Message fieldInfoOption) {
+    try {
+        // Get the descriptor for the field
+        final Descriptors.Descriptor descriptor = fieldInfoOption.getDescriptorForType();
+        
+        // Find the 'isPii' field in the descriptor
+        final Descriptors.FieldDescriptor isPiiField = descriptor.findFieldByName("isPii");
+
+        // Check if the 'isPii' field exists and if it's set to true
+        if (isPiiField != null && fieldInfoOption.hasField(isPiiField)) {
+            return (Boolean) fieldInfoOption.getField(isPiiField);
+        }
+    } catch (Exception e) {
+        // Log or handle any exceptions if required
+        System.err.println("Error extracting isPii from field: " + e.getMessage());
+    }
+
+    // Default to non-PII if 'isPii' is not found or cannot be extracted
+    return false;
+}
+}
