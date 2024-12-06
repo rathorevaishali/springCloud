@@ -1,0 +1,100 @@
+import java.lang.reflect.Field;
+import java.util.*;
+
+public class GenericPrivacyTagExtractor {
+
+    public static void main(String[] args) throws Exception {
+        // Example JSON input
+        // Use your JSON and deserialize it into the desired Java object
+        Object exampleObject = getExampleObject(); // Replace with actual deserialization
+
+        // Create a Set to store the privacy tags
+        Set<String> privacyTags = new HashSet<>();
+
+        // Extract privacy tags generically
+        extractPrivacyTags(exampleObject, privacyTags);
+
+        // Output the result
+        System.out.println("Privacy Tags: " + privacyTags);
+    }
+
+    private static void extractPrivacyTags(Object obj, Set<String> privacyTags) {
+        if (obj == null) {
+            return;
+        }
+
+        // Handle Collections (Lists, Sets)
+        if (obj instanceof Collection<?>) {
+            for (Object item : (Collection<?>) obj) {
+                extractPrivacyTags(item, privacyTags);
+            }
+            return;
+        }
+
+        // Handle Maps
+        if (obj instanceof Map<?, ?>) {
+            for (Object entry : ((Map<?, ?>) obj).values()) {
+                extractPrivacyTags(entry, privacyTags);
+            }
+            return;
+        }
+
+        // Handle arrays
+        if (obj.getClass().isArray()) {
+            for (Object item : (Object[]) obj) {
+                extractPrivacyTags(item, privacyTags);
+            }
+            return;
+        }
+
+        // If the object is not a complex type, return
+        if (isPrimitiveOrWrapper(obj.getClass())) {
+            return;
+        }
+
+        // Use reflection to inspect fields
+        Class<?> clazz = obj.getClass();
+        while (clazz != null) { // Traverse the class hierarchy
+            for (Field field : clazz.getDeclaredFields()) {
+                field.setAccessible(true); // Allow access to private fields
+
+                try {
+                    Object value = field.get(obj); // Get the field value
+
+                    if (value == null) {
+                        continue;
+                    }
+
+                    // Check if the field has isPii and privacyTag
+                    if ("isPii".equals(field.getName()) && value instanceof Boolean && (Boolean) value) {
+                        // Try to find the associated privacyTag field
+                        Field privacyTagField = clazz.getDeclaredField("privacyTag");
+                        privacyTagField.setAccessible(true);
+                        Object privacyTagValue = privacyTagField.get(obj);
+
+                        if (privacyTagValue != null) {
+                            privacyTags.add(privacyTagValue.toString());
+                        }
+                    }
+
+                    // Recursively process nested objects
+                    extractPrivacyTags(value, privacyTags);
+
+                } catch (NoSuchFieldException | IllegalAccessException e) {
+                    // Handle fields that don't exist or aren't accessible
+                }
+            }
+            clazz = clazz.getSuperclass(); // Move to the superclass
+        }
+    }
+
+    private static boolean isPrimitiveOrWrapper(Class<?> clazz) {
+        return clazz.isPrimitive() || clazz == String.class || Number.class.isAssignableFrom(clazz) ||
+               clazz == Boolean.class || clazz == Character.class || clazz.isEnum();
+    }
+
+    private static Object getExampleObject() {
+        // Replace with code to generate or deserialize your example object
+        return null;
+    }
+}
