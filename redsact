@@ -29,3 +29,40 @@ public Map<String, Set<String>> identifyPiiFields(final Object message) {
     piiMap.put(inputClassName, allowedAttributes);
     return piiMap;
 }
+
+
+
+private void redactPIIAttribute(final Object input, final boolean isRedactCompleteObject) {
+    if (input == null) return;
+
+    if (input instanceof Message protoMessage) {
+        // Process protobuf message
+        final Map<String, Set<String>> config = identifyPiiFields(input);
+        final String inputClassName = input.getClass().getName();
+
+        final Set<String> allowedListAttributes = config.getOrDefault(inputClassName, UnifiedSet.newSet());
+        final List<Descriptors.FieldDescriptor> allFields = protoMessage.getDescriptorForType().getFields();
+
+        for (Descriptors.FieldDescriptor field : allFields) {
+            if (!allowedListAttributes.contains(field.getName())) {
+                redactPiiField(input, field.getName());
+            }
+        }
+    } else if (input instanceof Map<?, ?> mapValue) {
+        // Process map contents
+        for (Object value : mapValue.values()) {
+            redactPIIAttribute(value, isRedactCompleteObject);
+        }
+    } else if (input instanceof List<?> listValue) {
+        // Process list contents
+        for (Object value : listValue) {
+            redactPIIAttribute(value, isRedactCompleteObject);
+        }
+    } else if (input instanceof Set<?> setValue) {
+        // Process set contents
+        for (Object value : setValue) {
+            redactPIIAttribute(value, isRedactCompleteObject);
+        }
+    }
+}
+
