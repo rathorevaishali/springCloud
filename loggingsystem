@@ -314,3 +314,67 @@ public class PiiLoggingFilter implements Filter {
         handler.handleResponse(request, response);
     }
 }
+
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class FileLoggingClient implements ILoggingClient {
+    private final Logger logger;
+
+    /**
+     * Initializes the FileLoggingClient with a logger for the specific category.
+     * 
+     * @param logCategory The category or name for the logger (e.g., "PII_LOGGER").
+     */
+    public FileLoggingClient(String logCategory) {
+        this.logger = LoggerFactory.getLogger(logCategory);
+    }
+
+    @Override
+    public void log(String message) {
+        logger.info(message); // Logs the message at the INFO level
+    }
+}
+
+
+import org.springframework.http.ResponseEntity;
+
+public class SpringRestPiiHandler implements PiiHandler {
+    private final AuditLogger auditLogger;
+
+    public SpringRestPiiHandler(AuditLogger auditLogger) {
+        this.auditLogger = auditLogger;
+    }
+
+    @Override
+    public boolean supports(Object request) {
+        // Check if the request is specific to Spring Boot (e.g., ResponseEntity)
+        return request instanceof ResponseEntity;
+    }
+
+    @Override
+    public void handleRequest(Object request) {
+        // Optionally, handle request-specific logging if needed
+        System.out.println("Spring REST request intercepted.");
+    }
+
+    @Override
+    public void handleResponse(Object request, Object response) {
+        if (response instanceof ResponseEntity) {
+            ResponseEntity<?> responseEntity = (ResponseEntity<?>) response;
+
+            // Log the response body (if it contains PII)
+            Object responseBody = responseEntity.getBody();
+            if (responseBody != null) {
+                AuditLoggingEvent event = new AuditLoggingEvent();
+                event.setTimestamp(String.valueOf(System.currentTimeMillis()));
+                event.setUserId("User from Spring");
+                event.setAccessedData(responseBody.toString());
+                event.setIpAddress("127.0.0.1");
+                auditLogger.logEvent(event);
+            }
+        }
+    }
+}
+
