@@ -1,0 +1,31 @@
+public Map<String, Set<String>> identifyPiiFields(final Object message) {
+    if (!(message instanceof Message protoMessage)) {
+        return Collections.emptyMap();
+    }
+
+    final Map<String, Set<String>> piiMap = new HashMap<>();
+    final String inputClassName = message.getClass().getName();
+    final Set<String> allowedAttributes = new HashSet<>();
+
+    // Get all fields of the current message
+    List<Descriptors.FieldDescriptor> fields = protoMessage.getDescriptorForType().getFields();
+
+    for (Descriptors.FieldDescriptor field : fields) {
+        // Check if this field has the PII custom option
+        if (getFieldOptionsPii(field)) {
+            allowedAttributes.add(field.getName());
+        }
+
+        // Handle nested message fields
+        if (field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+            Object nestedField = protoMessage.getField(field);
+            if (nestedField instanceof Message) {
+                Map<String, Set<String>> nestedPiiMap = identifyPiiFields(nestedField);
+                piiMap.putAll(nestedPiiMap); // Merge with parent PII map
+            }
+        }
+    }
+
+    piiMap.put(inputClassName, allowedAttributes);
+    return piiMap;
+}
