@@ -1,0 +1,309 @@
+Updated Architecture
+Here is the updated structure:
+
+plaintext
+Copy code
+config/
+    - AuditLoggingProperties.java
+    - PiiLoggerProperties.java
+core/
+    validation/
+        - Validator.java
+        - ValidationRegistry.java
+    logging/
+        - LoggingHandler.java
+        - LoggingClientFactory.java
+        - ILoggingClient.java
+        - FileLoggingClient.java
+        - AuditLogger.java
+    event/
+        - AuditLoggingEvent.java
+    handler/
+        - PiiHandler.java
+        - JerseyPiiHandler.java
+        - ServletPiiHandler.java
+        - GraphQLPiiHandler.java
+        - PiiHandlerRegistry.java
+    utils/
+        - JsonUtils.java
+        - ReflectionUtils.java
+exception/
+    - AuditLoggingException.java
+aspect/
+    - PiiAccessAspect.java
+filter/
+    - PiiLoggingFilter.java
+Implementation of Classes
+config/AuditLoggingProperties.java
+Holds properties related to audit logging configuration.
+
+java
+Copy code
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "audit.logging")
+public class AuditLoggingProperties {
+    private String logFilePath;
+
+    public String getLogFilePath() {
+        return logFilePath;
+    }
+
+    public void setLogFilePath(String logFilePath) {
+        this.logFilePath = logFilePath;
+    }
+}
+config/PiiLoggerProperties.java
+Holds PII logger-specific configurations.
+
+java
+Copy code
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "pii.logger")
+public class PiiLoggerProperties {
+    private boolean enabled;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+}
+core/validation/Validator.java
+Defines validation logic for data.
+
+java
+Copy code
+public interface Validator<T> {
+    boolean validate(T data);
+}
+core/validation/ValidationRegistry.java
+Holds multiple validators and allows retrieving them dynamically.
+
+java
+Copy code
+import java.util.List;
+
+public class ValidationRegistry {
+    private final List<Validator<?>> validators;
+
+    public ValidationRegistry(List<Validator<?>> validators) {
+        this.validators = validators;
+    }
+
+    public Validator<?> getValidator(Class<?> type) {
+        return validators.stream()
+                .filter(validator -> validator.getClass().isAssignableFrom(type))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No validator found for type: " + type));
+    }
+}
+core/logging/ILoggingClient.java
+Defines the interface for logging clients.
+
+java
+Copy code
+public interface ILoggingClient {
+    void log(String message);
+}
+core/logging/FileLoggingClient.java
+File-based implementation of the logging client.
+
+java
+Copy code
+import java.io.FileWriter;
+import java.io.IOException;
+
+public class FileLoggingClient implements ILoggingClient {
+    private final String logFilePath;
+
+    public FileLoggingClient(String logFilePath) {
+        this.logFilePath = logFilePath;
+    }
+
+    @Override
+    public void log(String message) {
+        try (FileWriter writer = new FileWriter(logFilePath, true)) {
+            writer.write(message + "\n");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to log message", e);
+        }
+    }
+}
+core/logging/AuditLogger.java
+Centralized class for logging audit events.
+
+java
+Copy code
+public class AuditLogger {
+    private final ILoggingClient loggingClient;
+
+    public AuditLogger(ILoggingClient loggingClient) {
+        this.loggingClient = loggingClient;
+    }
+
+    public void logEvent(AuditLoggingEvent event) {
+        loggingClient.log(event.toString());
+    }
+}
+core/event/AuditLoggingEvent.java
+Represents a single audit log event.
+
+java
+Copy code
+public class AuditLoggingEvent {
+    private String timestamp;
+    private String userId;
+    private String accessedData;
+    private String ipAddress;
+
+    // Getters and setters
+
+    @Override
+    public String toString() {
+        return String.format("Timestamp: %s, UserId: %s, Data: %s, IP: %s",
+                timestamp, userId, accessedData, ipAddress);
+    }
+}
+core/handler/PiiHandler.java
+Defines the handler interface.
+
+java
+Copy code
+public interface PiiHandler {
+    boolean supports(Object request);
+    void handleRequest(Object request);
+    void handleResponse(Object request, Object response);
+}
+core/handler/JerseyPiiHandler.java
+Handles PII for Jersey requests.
+
+java
+Copy code
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerResponseContext;
+
+public class JerseyPiiHandler implements PiiHandler {
+    private final AuditLogger auditLogger;
+
+    public JerseyPiiHandler(AuditLogger auditLogger) {
+        this.auditLogger = auditLogger;
+    }
+
+    @Override
+    public boolean supports(Object request) {
+        return request instanceof ContainerRequestContext;
+    }
+
+    @Override
+    public void handleRequest(Object request) {
+        // Handle request-specific logic
+    }
+
+    @Override
+    public void handleResponse(Object request, Object response) {
+        if (response instanceof ContainerResponseContext) {
+            // Process and log response data
+        }
+    }
+}
+core/handler/PiiHandlerRegistry.java
+Manages the mapping of handlers.
+
+java
+Copy code
+import java.util.List;
+
+public class PiiHandlerRegistry {
+    private final List<PiiHandler> handlers;
+
+    public PiiHandlerRegistry(List<PiiHandler> handlers) {
+        this.handlers = handlers;
+    }
+
+    public PiiHandler getHandler(Object request) {
+        return handlers.stream()
+                .filter(handler -> handler.supports(request))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No handler found for request type: " + request.getClass()));
+    }
+}
+exception/AuditLoggingException.java
+Custom exception for logging errors.
+
+java
+Copy code
+public class AuditLoggingException extends RuntimeException {
+    public AuditLoggingException(String message) {
+        super(message);
+    }
+
+    public AuditLoggingException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+aspect/PiiAccessAspect.java
+Intercepts annotated methods for logging.
+
+java
+Copy code
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.ProceedingJoinPoint;
+
+@Aspect
+public class PiiAccessAspect {
+    private final PiiHandlerRegistry handlerRegistry;
+
+    public PiiAccessAspect(PiiHandlerRegistry handlerRegistry) {
+        this.handlerRegistry = handlerRegistry;
+    }
+
+    @Around("@annotation(PiiAccess)")
+    public Object logPiiAccess(ProceedingJoinPoint joinPoint) throws Throwable {
+        Object[] args = joinPoint.getArgs();
+
+        // Pre-processing
+        PiiHandler handler = handlerRegistry.getHandler(args[0]);
+        handler.handleRequest(args[0]);
+
+        // Proceed with method
+        Object response = joinPoint.proceed();
+
+        // Post-processing
+        handler.handleResponse(args[0], response);
+
+        return response;
+    }
+}
+filter/PiiLoggingFilter.java
+Filter-based approach for non-Spring frameworks.
+
+java
+Copy code
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+
+public class PiiLoggingFilter implements Filter {
+    private final PiiHandlerRegistry handlerRegistry;
+
+    public PiiLoggingFilter(PiiHandlerRegistry handlerRegistry) {
+        this.handlerRegistry = handlerRegistry;
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) {
+        PiiHandler handler = handlerRegistry.getHandler(request);
+        handler.handleRequest(request);
+
+        // Continue request flow
+        chain.doFilter(request, response);
+
+        handler.handleResponse(request, response);
+    }
+}
