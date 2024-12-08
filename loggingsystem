@@ -135,7 +135,14 @@ public class FileLoggingClient implements ILoggingClient {
 }
 core/logging/AuditLogger.java
 Centralized class for logging audit events.
+public class FileAuditLogger implements AuditLogger {
+    private static final Logger piiLogger = LoggerFactory.getLogger("PII_LOGGER");
 
+    @Override
+    public void logEvent(AuditEvent event) {
+        piiLogger.info("Audit Event: {}", event.getDetails());
+    }
+}
 java
 Copy code
 public class AuditLogger {
