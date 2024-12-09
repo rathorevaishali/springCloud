@@ -377,4 +377,18 @@ public class SpringRestPiiHandler implements PiiHandler {
         }
     }
 }
+@Configuration
+public class PiiHandlerConfig {
+    @Bean
+    public PiiHandlerRegistry piiHandlerRegistry(AuditLogger auditLogger) {
+        return new PiiHandlerRegistry(
+            List.of(
+                new JerseyPiiHandler(auditLogger),
+                new ServletPiiHandler(auditLogger),
+                new GraphQLPiiHandler(auditLogger),
+                new SpringRestPiiHandler(auditLogger)
+            )
+        );
+    }
+}
 
