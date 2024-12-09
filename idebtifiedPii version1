@@ -1,0 +1,220 @@
+package core;
+
+import com.google.protobuf.*;
+import com.gs.imd.client.model.util.FieldInfoOption;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+@SuppressWarnings("all")
+public class PiiFieldIdentifierold {
+    private static final Logger log = LoggerFactory.getLogger(PiiFieldIdentifierold.class);
+    private static final String UNDERSCORE = "_";
+    private static final StringValue REDACTED_STRINGVALUE = StringValue.of("STRING_VALUE_REDACTED");
+    private static final String REDACTED_STRING = "testPIIVais";
+    private static final DoubleValue REDACTED_DOUBLE_VALUE = DoubleValue.of(Double.MIN_VALUE);
+    private static final Int32Value REDACTED_INT_VALUE = Int32Value.newBuilder().setValue(Integer.MIN_VALUE).build();
+    private static final Set<String> nonPIIDefaultAllowList = UnifiedSet.newSet();
+    private static final Set<String> nonPIIStrings = UnifiedSet.newSet();
+
+    private final Map<String, Set<String>> fieldsForClass = new ConcurrentHashMap<>();
+    private final Map<String, String> privacyTagMap = new ConcurrentHashMap<>();
+
+    static {
+        nonPIIStrings.add("keys evicted successfully");
+        nonPIIStrings.add("Reload complete");
+        nonPIIStrings.add("is not available (PII)");
+        nonPIIStrings.add("NOT FOUND");
+        nonPIIDefaultAllowList.add("id");
+    }
+
+    /**
+     * Main method to redact PII from an object.
+     *
+     * @param attributeToBeRedacted     The object to redact.
+     * @param isRedactCompleteObject    Whether to redact the complete object or only marked fields.
+     * @return The redacted object.
+     */
+    public Object readPII(final Object attributeToBeRedacted, final boolean isRedactCompleteObject) {
+        if (attributeToBeRedacted == null) {
+            return null;
+        }
+
+        if (attributeToBeRedacted instanceof Map) {
+            Map<?, ?> mapValue = (Map<?, ?>) attributeToBeRedacted;
+            mapValue.values().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(value -> redactAttribute(value, isRedactCompleteObject));
+            return mapValue;
+        } else if (attributeToBeRedacted instanceof List) {
+            List<?> list = (List<?>) attributeToBeRedacted;
+            return list.stream()
+                    .filter(Objects::nonNull)
+                    .map(value -> redactAttribute(value, isRedactCompleteObject))
+                    .collect(Collectors.toList());
+        } else if (attributeToBeRedacted instanceof Set) {
+            Set<?> set = (Set<?>) attributeToBeRedacted;
+            return set.stream()
+                    .filter(Objects::nonNull)
+                    .map(value -> redactAttribute(value, isRedactCompleteObject))
+                    .collect(Collectors.toSet());
+        } else if (attributeToBeRedacted instanceof String) {
+            return checkForNonPIIStringsAndRedact((String) attributeToBeRedacted);
+        } else if (attributeToBeRedacted instanceof Message) {
+            redactPIIAttribute(attributeToBeRedacted, isRedactCompleteObject);
+        }
+
+        return attributeToBeRedacted;
+    }
+
+    /**
+     * Identifies PII fields in a given object.
+     *
+     * @param message The object to inspect.
+     * @return A map of class names to sets of field names that contain PII.
+     */
+    public Map<String, Set<String>> identifyPiiFields(final Object message) {
+        if (!(message instanceof Message protoMessage)) {
+            return Collections.emptyMap();
+        }
+
+        final Map<String, Set<String>> piiMap = new HashMap<>();
+        final String inputClassName = message.getClass().getName();
+        final Set<String> allowedAttributes = new HashSet<>();
+
+        // Get all fields of the current message
+        List<Descriptors.FieldDescriptor> fields = protoMessage.getDescriptorForType().getFields();
+
+        for (Descriptors.FieldDescriptor field : fields) {
+            // Check if this field has the PII custom option
+            if (getFieldOptionsPii(field)) {
+                allowedAttributes.add(field.getName());
+            }
+
+            // Handle repeated fields (Lists)
+            if (field.isRepeated()) {
+                List<?> repeatedField = (List<?>) protoMessage.getField(field);
+                for (Object item : repeatedField) {
+                    if (item instanceof Message) {
+                        piiMap.putAll(identifyPiiFields(item)); // Recursive processing
+                    }
+                }
+            }
+
+            // Handle nested message fields
+            if (field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE && !field.isRepeated()) {
+                Object nestedField = protoMessage.getField(field);
+                if (nestedField instanceof Message) {
+                    piiMap.putAll(identifyPiiFields(nestedField)); // Merge nested PII fields
+                }
+            }
+        }
+
+        piiMap.put(inputClassName, allowedAttributes);
+        return piiMap;
+    }
+
+    private boolean getFieldOptionsPii(final Descriptors.FieldDescriptor fd) {
+        boolean isAllowed = false;
+
+        for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : fd.getOptions().getAllFields().entrySet()) {
+            if (entry.getValue() instanceof FieldInfoOption infoOption) {
+                isAllowed = getOptionsPii(infoOption);
+                String privacyTag = getPrivacyTagFromInfoOption(infoOption);
+                if (StringUtils.isNotEmpty(privacyTag)) {
+                    privacyTagMap.put(fd.getJsonName(), privacyTag);
+                }
+            }
+        }
+
+        if (nonPIIDefaultAllowList.contains(fd.getJsonName())) {
+            isAllowed = true;
+        }
+
+        return isAllowed;
+    }
+
+    private boolean getOptionsPii(final FieldInfoOption infoOption) {
+        return infoOption.hasIsPii() && infoOption.getIsPii();
+    }
+
+    private String getPrivacyTagFromInfoOption(final FieldInfoOption infoOption) {
+        return String.valueOf(infoOption.getPrivacyTag());
+    }
+
+    private String checkForNonPIIStringsAndRedact(final String attribute) {
+        if (nonPIIStrings.contains(attribute)) {
+            return REDACTED_STRING;
+        }
+        return attribute;
+    }
+
+    private Object redactAttribute(final Object attributeToBeRedacted, final boolean isRedactCompleteObject) {
+        if (attributeToBeRedacted instanceof Message) {
+            redactPIIAttribute(attributeToBeRedacted, isRedactCompleteObject);
+        } else {
+            readPII(attributeToBeRedacted, false);
+        }
+        return attributeToBeRedacted;
+    }
+
+    private void redactPIIAttribute(final Object input, final boolean isRedactCompleteObject) {
+        if (input == null) {
+            return;
+        }
+
+        Set<String> allFieldsList = fieldsForClass.computeIfAbsent(
+                input.getClass().getName(),
+                key -> getAllFieldsFromProto(input)
+        );
+
+        Map<String, Set<String>> config = identifyPiiFields(input);
+        Set<String> allowedListAttributes = config.getOrDefault(input.getClass().getName(), Collections.emptySet());
+
+        for (String attributeName : allFieldsList) {
+            if (allowedListAttributes.contains(attributeName)) {
+                redactPiiField(input, attributeName);
+            }
+        }
+    }
+
+    private Set<String> getAllFieldsFromProto(final Object input) {
+        return FieldUtils.getAllFieldsList(input.getClass()).stream()
+                .filter(f -> Modifier.isPrivate(f.getModifiers()) && !Modifier.isStatic(f.getModifiers()))
+                .map(Field::getName)
+                .collect(Collectors.toSet());
+    }
+
+    private void redactPiiField(final Object input, final String attributeName) {
+        Object field = getField(input, attributeName);
+        if (field != null) {
+            if (field instanceof List) {
+                List<?> list = (List<?>) field;
+                list.forEach(item -> readPII(item, false)); // Recursive redaction for lists
+            } else if (field instanceof Message) {
+                readPII(field, false); // Recursive redaction for nested messages
+            } else {
+                readPII(field, false); // Handle other types
+            }
+        }
+    }
+
+    private Object getField(final Object input, final String attributeName) {
+        try {
+            Field field = input.getClass().getDeclaredField(attributeName);
+            field.setAccessible(true);
+            return field.get(input);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            log.debug("Field {} not found on class {}", attributeName, input.getClass().getName());
+        }
+        return null;
+    }
+}
