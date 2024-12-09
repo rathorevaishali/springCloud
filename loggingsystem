@@ -392,3 +392,17 @@ public class PiiHandlerConfig {
     }
 }
 
+
+
+    private final PiiHandlerRegistry registry;
+
+    public PiiAccessAspect(AuditLogger auditLogger) {
+        this.registry = new PiiHandlerRegistry(
+            List.of(
+                new JerseyPiiHandler(auditLogger),
+                new ServletPiiHandler(auditLogger),
+                new GraphQLPiiHandler(auditLogger),
+                new SpringRestPiiHandler(auditLogger)
+            )
+        );
+    }
