@@ -1,0 +1,124 @@
+Simplified Class Implementations
+1. ILoggingClient.java
+Defines a standard interface for any logging implementation (e.g., file, database).
+
+java
+Copy code
+public interface ILoggingClient {
+    void log(String message);
+}
+2. FileLoggingClient.java
+A file-based logging implementation using SLF4J.
+
+java
+Copy code
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class FileLoggingClient implements ILoggingClient {
+
+    private final Logger logger;
+
+    public FileLoggingClient() {
+        this.logger = LoggerFactory.getLogger("PII_LOGGER");
+    }
+
+    @Override
+    public void log(String message) {
+        logger.info(message);
+    }
+}
+3. AuditLogger.java
+The central class for managing and logging audit events.
+
+java
+Copy code
+public class AuditLogger {
+
+    private final ILoggingClient loggingClient;
+
+    public AuditLogger(ILoggingClient loggingClient) {
+        this.loggingClient = loggingClient;
+    }
+
+    public void logAuditEvent(String userId, String accessedData) {
+        String message = String.format("User %s accessed: %s", userId, accessedData);
+        loggingClient.log(message);
+    }
+}
+4. LoggingHandler.java
+A simplified handler to manage logging tasks.
+
+java
+Copy code
+public class LoggingHandler {
+
+    private final AuditLogger auditLogger;
+
+    public LoggingHandler(AuditLogger auditLogger) {
+        this.auditLogger = auditLogger;
+    }
+
+    public void logEvent(String userId, String accessedData) {
+        auditLogger.logAuditEvent(userId, accessedData);
+    }
+}
+5. PiiAccessAspect.java
+The aspect that intercepts annotated methods and triggers the logging process.
+
+java
+Copy code
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.springframework.stereotype.Component;
+
+@Aspect
+@Component
+public class PiiAccessAspect {
+
+    private final LoggingHandler loggingHandler;
+
+    public PiiAccessAspect(LoggingHandler loggingHandler) {
+        this.loggingHandler = loggingHandler;
+    }
+
+    @Before("@annotation(PiiAccess)")
+    public void logPiiAccess() {
+        // Mock data for simplicity; replace with actual user/request data
+        String userId = "test-user";
+        String accessedData = "Sensitive Data";
+
+        loggingHandler.logEvent(userId, accessedData);
+    }
+}
+6. PiiHandlerRegistry.java
+Manages the selection of handlers based on the request type.
+
+java
+Copy code
+import java.util.List;
+
+public class PiiHandlerRegistry {
+
+    private final List<PiiHandler> handlers;
+
+    public PiiHandlerRegistry(List<PiiHandler> handlers) {
+        this.handlers = handlers;
+    }
+
+    public PiiHandler getHandler(Object request) {
+        return handlers.stream()
+                .filter(handler -> handler.supports(request))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No handler found for request type: " + request.getClass()));
+    }
+}
+Flow of the Simplified Logging Process
+Intercept the Request: The PiiAccessAspect intercepts annotated methods using the @PiiAccess annotation.
+Delegate to LoggingHandler: The aspect invokes LoggingHandler to process and log the PII event.
+Log the Event: The LoggingHandler delegates the task to the AuditLogger, which uses FileLoggingClient to write logs.
+Why This is Simpler
+Fewer Layers: Directly integrates FileLoggingClient without a factory or multiple client types for now.
+Centralized Logging Logic: AuditLogger is the only place where logs are written, simplifying control.
+Scalability with Minimal Changes: If additional logging mechanisms are needed, only AuditLogger and ILoggingClient need to be updated.
+This simplified architecture balances ease of use, maintainability, and scalability without introducing unnecessary complexity.
