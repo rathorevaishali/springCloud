@@ -406,3 +406,53 @@ public class PiiHandlerConfig {
             )
         );
     }
+
+
+
+google.protobuf.BoolValue has_loan_with_ameriprise_bank = 3090 [(util.field_info).isPii = true, (util.field_info).typeOfPii = PERSONAL_FINANCIAL_INFO];
+google.protobuf.StringValue loan_with_ameriprise_explanation = 3091 [(util.field_info).isPii = true, (util.field_info).typeOfPii = PERSONAL_FINANCIAL_INFO];
+google.protobuf.BoolValue has_given_consent_to_share_with_household = 3095 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BEHAVIORAL_INFO];
+google.protobuf.StringValue wm_business_unit = 3096 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BACKGROUND_INFO];
+google.protobuf.BoolValue is_subject_to_amt = 4000 [(util.field_info).isPii = true, (util.field_info).typeOfPii = FINANCIAL_ACCT_NO];
+google.protobuf.BoolValue avoid_amt_securities = 4003 [(util.field_info).isPii = true, (util.field_info).typeOfPii = FINANCIAL_ACCT_NO];
+google.protobuf.BoolValue expects_other_long_term_realized_gains = 4004 [(util.field_info).isPii = true, (util.field_info).typeOfPii = PERSONAL_FINANCIAL_INFO];
+google.protobuf.BoolValue expects_other_short_term_realized_gains = 4005 [(util.field_info).isPii = true, (util.field_info).typeOfPii = PERSONAL_FINANCIAL_INFO];
+google.protobuf.DoubleValue ordinary_tax_rate = 4006 [(util.field_info).isPii = true, (util.field_info).typeOfPii = FINANCIAL_ACCT_NO];
+google.protobuf.DoubleValue long_term_tax_rate = 4007 [(util.field_info).isPii = true, (util.field_info).typeOfPii = FINANCIAL_ACCT_NO];
+google.protobuf.DoubleValue marginal_tax_rate = 4008 [(util.field_info).isPii = true, (util.field_info).typeOfPii = FINANCIAL_ACCT_NO];
+repeated google.protobuf.StringValue document_linkage_ids = 4020 [(util.field_info).className = "core.document.DocumentLinkage", (util.field_info).isPii = true, (util.field_info).typeOfPii = DIGITAL_IDENTIFIER];
+string first_name = 10 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: FIRST_NAME}, (util.field_info).typeOfPii = NAME];
+google.protobuf.StringValue middle_name = 11 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: MIDDLE_NAME}, (util.field_info).typeOfPii = NAME];
+string last_name = 12 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: LAST_NAME}, (util.field_info).typeOfPii = NAME];
+google.protobuf.StringValue prefix = 13 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: DEFAULT}, (util.field_info).typeOfPii = NAME];
+google.protobuf.StringValue suffix = 14 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: SUFFIX}, (util.field_info).typeOfPii = NAME];
+Gender gender = 15 [(util.field_info).isPii = true, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+repeated google.protobuf.StringValue additional_countries_of_nationality = 4014 [(util.field_info).isPii = true, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+google.protobuf.StringValue country_of_birth = 4006 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: ADDRESS_COUNTRY}, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+google.protobuf.StringValue state_of_birth = 4007 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: ADDRESS_STATE}, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+google.protobuf.StringValue city_of_birth = 4008 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: ADDRESS_CITY}, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+util.Date date_of_birth = 100 [(util.field_info).isPii = true, (util.field_info).validationFields = {allowOnOrBefore: CURRENT_DATE}, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+util.Date date_of_death = 101 [(util.field_info).isPii = true, (util.field_info).validationFields = {allowOnOrBefore: CURRENT_DATE}, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+optional core.party.MaritalStatus marital_status = 19 [(util.field_info).isPii = true, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+repeated core.Identifier identifications = 25 [(util.field_info).isPii = true, (util.field_info).typeOfPii = DIGITAL_IDENTIFIER];
+google.protobuf.StringValue name_for_correspondence = 27 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: FULL_NAME}, (util.field_info).typeOfPii = NAME];
+google.protobuf.StringValue preferred_nickname = 28 [(util.field_info).isPii = true, (util.field_info).typeOfPii = NAME];
+google.protobuf.StringValue preferred_nickname_non_roman_text = 29 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: UNICODE}, (util.field_info).typeOfPii = NAME];
+google.protobuf.Timestamp marriage_date = 1002 [(util.field_info).isPii = true, (util.field_info).typeOfPii = DEMOGRAPHIC_INFO];
+google.protobuf.BoolValue is_employed_by_ameriprise_bank_or_affiliate = 3006 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BACKGROUND_INFO];
+google.protobuf.StringValue employer_name = 2 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: COMPANY_NAME}, (util.field_info).typeOfPii = BACKGROUND_INFO];
+google.protobuf.StringValue position = 6 [(util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: DEFAULT}, (util.field_info).typeOfPii = BACKGROUND_INFO];
+google.protobuf.StringValue employee_id = 7 [deprecated = true, (util.field_info).isPii = true, (util.field_info).typeOfPii = INTERNAL_GS_ID];
+GSEmployeeDetails gs_employee_details = 3007 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BACKGROUND_INFO];
+google.protobuf.StringValue source_of_wealth_summary = 3092 [(util.field_info).isPii = true, (util.field_info).typeOfPii = SENSITIVE_PERSONAL_FINANCIAL_INFO];
+google.protobuf.StringValue annual_income = 3022 [(util.field_info).isPii = true, (util.field_info).typeOfPii = PERSONAL_FINANCIAL_INFO];
+google.protobuf.BoolValue advisor_attests_party_is_minor = 3023 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BEHAVIORAL_INFO];
+google.protobuf.BoolValue advisor_attests_party_is_deceased = 3024 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BEHAVIORAL_INFO];
+google.protobuf.BoolValue is_investment_advisor = 61 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BEHAVIORAL_INFO];
+google.protobuf.BoolValue files_private_fund_advisor_form = 62 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BACKGROUND_INFO];
+google.protobuf.StringValue emploee_type = 64 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BACKGROUND_INFO];
+google.protobuf.BoolValue files_private_fund_advisor_form = 62 [(util.field_info).isPii = true, (util.field_info).typeOfPii = BEHAVIORAL_INFO];
+google.protobuf.StringValue emma_legal_name = 15 [(util.field_info).isPii = true, (util.field_info).typeOfPii = NAME];
+ConsentRelationshipAttributes consent_relationship_attributes = 3001 [deprecated = true, (util.field_info).isPii = true, (util.field_info).typeOfPii = RELATIONSHIP_INFO];
+google.protobuf.StringValue company_name = 4 [deprecated = true, (util.field_info).isPii = true, (util.field_info).validationFields = {regexFieldType: COMPANY_NAME}, (util.field_info).typeOfPii = CORP_CONTACT_INFO];
+google.protobuf.StringValue tax_id = 6 [deprecated = true, (util.field_info).isPii = true,(util.field_info).typeOfPii = GOVT_ID];
