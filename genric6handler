@@ -1,0 +1,52 @@
+public class GenericErrorHandler implements PiiHandler {
+
+    private final AuditEventBuilder auditEventBuilder;
+
+    public GenericErrorHandler(AuditEventBuilder auditEventBuilder) {
+        this.auditEventBuilder = auditEventBuilder;
+    }
+
+    @Override
+    public boolean supports(Object response) {
+        return response instanceof ResponseEntity<?>; // Add other checks if needed
+    }
+
+    @Override
+    public void handleResponse(Object response) {
+        if (response instanceof ResponseEntity<?> responseEntity) {
+            int statusCode = responseEntity.getStatusCode().value();
+
+            if (statusCode >= 400 && statusCode < 500) {
+                handleClientError(responseEntity);
+            } else if (statusCode >= 500) {
+                handleServerError(responseEntity);
+            } else {
+                // No error, normal response handling
+                handleNormalResponse(responseEntity);
+            }
+        }
+    }
+
+    private void handleClientError(ResponseEntity<?> responseEntity) {
+        System.out.println("Handling client error...");
+        AuditEvent event = auditEventBuilder.buildClientErrorEvent(responseEntity);
+        logAuditEvent(event);
+    }
+
+    private void handleServerError(ResponseEntity<?> responseEntity) {
+        System.out.println("Handling server error...");
+        AuditEvent event = auditEventBuilder.buildServerErrorEvent(responseEntity);
+        logAuditEvent(event);
+    }
+
+    private void handleNormalResponse(ResponseEntity<?> responseEntity) {
+        System.out.println("Handling normal response...");
+        AuditEvent event = auditEventBuilder.buildNormalResponseEvent(responseEntity);
+        logAuditEvent(event);
+    }
+
+    private void logAuditEvent(AuditEvent event) {
+        // Logic for logging or sending the audit event
+        System.out.println("Audit Event: " + event);
+    }
+}
