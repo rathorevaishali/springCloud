@@ -63,3 +63,19 @@ public class IdFieldCounter {
         return Map.of(COUNT, idFieldCount, CLASSES, classNames);
     }
 }
+
+
+public static Set<String> getTopLevelClasses(Message message) {
+        Set<String> topClasses = new HashSet<>();
+
+        // Get all fields of the message
+        List<Descriptors.FieldDescriptor> fields = message.getDescriptorForType().getFields();
+
+        for (Descriptors.FieldDescriptor field : fields) {
+            // Check if the field type is a Message (i.e., another class)
+            if (field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+                topClasses.add(field.getMessageType().getName()); // Add only the direct class name
+            }
+        }
+        return topClasses;
+    }
