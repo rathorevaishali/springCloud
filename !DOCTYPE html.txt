@@ -171,4 +171,99 @@ public class IdFieldCounter {
     }
 }
 
+//////////////////////////////////
+
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Message;
+import java.util.*;
+
+public class IdFieldCounter {
+    private static final String COUNT = "count";
+    private static final String CLASSES = "classes";
+    private static final String ID_FIELD_NAME = "id";
+
+    public Map<String, Object> countIdFields(Message message) {
+        return countIdFields(message, new IdentityHashMap<>(), false, true);
+    }
+
+    private Map<String, Object> countIdFields(Object message, final Map<Object, Boolean> processedMessages, boolean checkNestedForId, boolean isRoot) {
+        if (!(message instanceof Message protoMessage)) {
+            return Map.of(COUNT, 0, CLASSES, new ArrayList<String>());
+        }
+
+        // Prevent infinite loops using IdentityHashMap
+        if (processedMessages.containsKey(protoMessage)) {
+            return Map.of(COUNT, 0, CLASSES, new ArrayList<String>());
+        }
+        processedMessages.put(protoMessage, true);
+
+        int idFieldCount = 0;
+        final List<String> classNames = new ArrayList<>();
+
+        final List<Descriptors.FieldDescriptor> fields = protoMessage.getDescriptorForType().getFields();
+        boolean hasIdField = false;
+
+        // **Step 1: Detect & unwrap wrapper classes (like PrimaryAccountDataResponse)**
+        if (isRoot) {
+            Descriptors.FieldDescriptor repeatedFieldDescriptor = null;
+            for (Descriptors.FieldDescriptor field : fields) {
+                if (field.isRepeated() && field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+                    repeatedFieldDescriptor = field;
+                    break; // We assume wrapper has only one repeated field
+                }
+            }
+
+            if (repeatedFieldDescriptor != null) {
+                List<?> repeatedField = (List<?>) protoMessage.getField(repeatedFieldDescriptor);
+                for (Object item : repeatedField) {
+                    if (item instanceof Message) {
+                        Map<String, Object> nestedResult = countIdFields(item, processedMessages, false, false);
+                        idFieldCount += (int) nestedResult.get(COUNT);
+                        classNames.addAll((List<String>) nestedResult.get(CLASSES));
+                    }
+                }
+                return Map.of(COUNT, idFieldCount, CLASSES, classNames);
+            }
+        }
+
+        // **Step 2: Check for ID fields at the root level**
+        for (Descriptors.FieldDescriptor field : fields) {
+            if (ID_FIELD_NAME.equals(field.getName())) {
+                hasIdField = true;
+                idFieldCount++;
+                classNames.add(protoMessage.getClass().getName());
+            }
+
+            // If the field is a repeated message, process all items inside it
+            if (field.isRepeated() && field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+                List<?> repeatedField = (List<?>) protoMessage.getField(field);
+                for (Object item : repeatedField) {
+                    if (item instanceof Message) {
+                        Map<String, Object> nestedResult = countIdFields(item, processedMessages, false, false);
+                        idFieldCount += (int) nestedResult.get(COUNT);
+                        classNames.addAll((List<String>) nestedResult.get(CLASSES));
+                    }
+                }
+                continue;
+            }
+        }
+
+        // **Step 3: If no ID at root level, check next nested level**
+        if (!hasIdField && checkNestedForId) {
+            for (Descriptors.FieldDescriptor field : fields) {
+                if (field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+                    Object nestedField = protoMessage.getField(field);
+                    if (nestedField instanceof Message) {
+                        Map<String, Object> nestedResult = countIdFields(nestedField, processedMessages, true, false);
+                        idFieldCount += (int) nestedResult.get(COUNT);
+                        classNames.addAll((List<String>) nestedResult.get(CLASSES));
+                        break; // Stop after first valid ID field
+                    }
+                }
+            }
+        }
+
+        return Map.of(COUNT, idFieldCount, CLASSES, classNames);
+    }
+}
 
