@@ -1,68 +1,30 @@
-public Map<String, Set<String>> identifyPiiFields(final Object message) {
-    if (!(message instanceof Message protoMessage)) {
-        return Collections.emptyMap();
+ public static Set<String> getTopLevelClasses(Message message) {
+        Message actualMessage = unwrapIfNeeded(message);
+        return extractTopLevelClasses(actualMessage);
     }
 
-    final Map<String, Set<String>> piiMap = new HashMap<>();
-    final String inputClassName = message.getClass().getName();
-    final Set<String> allowedAttributes = new HashSet<>();
-
-    // Get all fields of the current message
-    List<Descriptors.FieldDescriptor> fields = protoMessage.getDescriptorForType().getFields();
-
-    for (Descriptors.FieldDescriptor field : fields) {
-        // Check if this field has the PII custom option
-        if (getFieldOptionsPii(field)) {
-            allowedAttributes.add(field.getName());
-        }
-
-        // Handle nested message fields
-        if (field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
-            Object nestedField = protoMessage.getField(field);
-            if (nestedField instanceof Message) {
-                Map<String, Set<String>> nestedPiiMap = identifyPiiFields(nestedField);
-                piiMap.putAll(nestedPiiMap); // Merge with parent PII map
+    private static Message unwrapIfNeeded(Message message) {
+        // Check if the message is a wrapper
+        List<Descriptors.FieldDescriptor> fields = message.getDescriptorForType().getFields();
+        for (Descriptors.FieldDescriptor field : fields) {
+            if (field.isRepeated() && field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+                List<?> repeatedField = (List<?>) message.getField(field);
+                if (!repeatedField.isEmpty() && repeatedField.get(0) instanceof Message) {
+                    return (Message) repeatedField.get(0); // Return the actual wrapped message
+                }
             }
         }
+        return message; // If no wrapper is found, return the original message
     }
 
-    piiMap.put(inputClassName, allowedAttributes);
-    return piiMap;
-}
+    private static Set<String> extractTopLevelClasses(Message message) {
+        Set<String> topClasses = new HashSet<>();
+        List<Descriptors.FieldDescriptor> fields = message.getDescriptorForType().getFields();
 
-
-
-private void redactPIIAttribute(final Object input, final boolean isRedactCompleteObject) {
-    if (input == null) return;
-
-    if (input instanceof Message protoMessage) {
-        // Process protobuf message
-        final Map<String, Set<String>> config = identifyPiiFields(input);
-        final String inputClassName = input.getClass().getName();
-
-        final Set<String> allowedListAttributes = config.getOrDefault(inputClassName, UnifiedSet.newSet());
-        final List<Descriptors.FieldDescriptor> allFields = protoMessage.getDescriptorForType().getFields();
-
-        for (Descriptors.FieldDescriptor field : allFields) {
-            if (!allowedListAttributes.contains(field.getName())) {
-                redactPiiField(input, field.getName());
+        for (Descriptors.FieldDescriptor field : fields) {
+            if (field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+                topClasses.add(field.getMessageType().getName()); // Add only top-level class names
             }
         }
-    } else if (input instanceof Map<?, ?> mapValue) {
-        // Process map contents
-        for (Object value : mapValue.values()) {
-            redactPIIAttribute(value, isRedactCompleteObject);
-        }
-    } else if (input instanceof List<?> listValue) {
-        // Process list contents
-        for (Object value : listValue) {
-            redactPIIAttribute(value, isRedactCompleteObject);
-        }
-    } else if (input instanceof Set<?> setValue) {
-        // Process set contents
-        for (Object value : setValue) {
-            redactPIIAttribute(value, isRedactCompleteObject);
-        }
+        return topClasses;
     }
-}
-
