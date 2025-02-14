@@ -267,3 +267,13 @@ public class IdFieldCounter {
     }
 }
 
+Hello Randy,
+
+I have worked on JIRA CAPS-15702 to support the addition of a new field in the Source of Wealth LDM.
+
+Could you please review the following merge request (MR)?
+
+Let me know if you have any questions or need further details.
+
+Best regards,
+Vaishali
