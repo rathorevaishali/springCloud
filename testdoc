@@ -1,0 +1,114 @@
+import com.google.protobuf.Message;
+import org.junit.jupiter.api.Test;
+import java.util.Map;
+import java.util.Set;
+import static org.junit.jupiter.api.Assertions.*;
+
+class LdmFieldExtractorTest {
+
+    private final LdmFieldExtractor extractor = new LdmFieldExtractor();
+
+    @Test
+    void testExtractIdFromSimpleMessage() {
+        // Simulating a simple PrimaryAccount message with an id field
+        PrimaryAccount primaryAccount = PrimaryAccount.newBuilder().setId("123").build();
+        
+        LdmFieldExSummary result = extractor.getIds(primaryAccount);
+        
+        assertNotNull(result);
+        assertTrue(result.idValues().containsKey("PrimaryAccount"));
+        assertEquals(1, result.idValues().get("PrimaryAccount").size());
+        assertEquals("123", result.idValues().get("PrimaryAccount").get(0));
+        assertTrue(result.topLevelClasses().contains("PrimaryAccount"));
+    }
+
+    @Test
+    void testExtractIdFromNestedMessage() {
+        // Nested structure: PrimaryAccountData -> PrimaryAccount
+        PrimaryAccount primaryAccount = PrimaryAccount.newBuilder().setId("456").build();
+        PrimaryAccountData primaryAccountData = PrimaryAccountData.newBuilder().setPrimaryAccount(primaryAccount).build();
+        
+        LdmFieldExSummary result = extractor.getIds(primaryAccountData);
+        
+        assertNotNull(result);
+        assertTrue(result.idValues().containsKey("PrimaryAccount"));
+        assertEquals("456", result.idValues().get("PrimaryAccount").get(0));
+        assertTrue(result.topLevelClasses().contains("PrimaryAccount"));
+        assertTrue(result.topLevelClasses().contains("PrimaryAccountData"));
+    }
+
+    @Test
+    void testExtractIdFromRepeatedFields() {
+        // Repeated subAccounts
+        SubAccount sub1 = SubAccount.newBuilder().setId("789").build();
+        SubAccount sub2 = SubAccount.newBuilder().setId("101").build();
+        
+        PrimaryAccountData primaryAccountData = PrimaryAccountData.newBuilder()
+                .addSubAccounts(sub1)
+                .addSubAccounts(sub2)
+                .build();
+        
+        LdmFieldExSummary result = extractor.getIds(primaryAccountData);
+        
+        assertNotNull(result);
+        assertEquals(2, result.idValues().get("SubAccount").size());
+        assertTrue(result.idValues().get("SubAccount").contains("789"));
+        assertTrue(result.idValues().get("SubAccount").contains("101"));
+        assertTrue(result.topLevelClasses().contains("SubAccount"));
+    }
+
+    @Test
+    void testExtractIdWhenWrappedInResponse() {
+        // Wrapping PrimaryAccountData inside PrimaryAccountDataResponse
+        PrimaryAccount primaryAccount = PrimaryAccount.newBuilder().setId("111").build();
+        PrimaryAccountData primaryAccountData = PrimaryAccountData.newBuilder().setPrimaryAccount(primaryAccount).build();
+        PrimaryAccountDataResponse response = PrimaryAccountDataResponse.newBuilder().setData(primaryAccountData).build();
+        
+        LdmFieldExSummary result = extractor.getIds(response);
+        
+        assertNotNull(result);
+        assertTrue(result.idValues().containsKey("PrimaryAccount"));
+        assertEquals("111", result.idValues().get("PrimaryAccount").get(0));
+        assertTrue(result.topLevelClasses().contains("PrimaryAccountData"));
+        assertTrue(result.topLevelClasses().contains("PrimaryAccount"));
+    }
+
+    @Test
+    void testDoesNotIncludeDeeplyNestedClasses() {
+        // Ensuring deeply nested classes are not included
+        Fee fee = Fee.newBuilder().setId("999").build();
+        SubAccount subAccount = SubAccount.newBuilder().setId("888").setFee(fee).build();
+        PrimaryAccountData primaryAccountData = PrimaryAccountData.newBuilder().addSubAccounts(subAccount).build();
+        
+        LdmFieldExSummary result = extractor.getIds(primaryAccountData);
+        
+        assertNotNull(result);
+        assertTrue(result.idValues().containsKey("SubAccount"));
+        assertFalse(result.idValues().containsKey("Fee")); // Fee should not be considered a top-level class
+        assertTrue(result.topLevelClasses().contains("SubAccount"));
+        assertFalse(result.topLevelClasses().contains("Fee"));
+    }
+
+    @Test
+    void testHandlesEmptyMessagesGracefully() {
+        // Ensuring an empty message does not throw an error
+        PrimaryAccountData emptyData = PrimaryAccountData.newBuilder().build();
+        
+        LdmFieldExSummary result = extractor.getIds(emptyData);
+        
+        assertNotNull(result);
+        assertTrue(result.idValues().isEmpty());
+        assertTrue(result.topLevelClasses().contains("PrimaryAccountData"));
+    }
+
+    @Test
+    void testHandlesNullMessage() {
+        // Passing a null message should return an empty response
+        LdmFieldExSummary result = extractor.getIds(null);
+        
+        assertNotNull(result);
+        assertTrue(result.idValues().isEmpty());
+        assertTrue(result.topLevelClasses().isEmpty());
+    }
+}
+
