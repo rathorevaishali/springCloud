@@ -1,0 +1,229 @@
+@Test
+public void testProcessIdField_WithNullFieldValue() {
+    PrimaryAccount message = PrimaryAccount.newBuilder().build(); // primaryAccountId is null
+
+    Map<String, List<Object>> idValues = new HashMap<>();
+    extractor.processIdField(message, message.getDescriptorForType().findFieldByName("primaryAccountId"), idValues);
+
+    assertTrue(idValues.isEmpty());
+}
+@Test
+public void testDetermineLmCoreEntity_WithWrappedMessage() {
+    PrimaryAccountData primaryAccountData = PrimaryAccountData.newBuilder()
+            .setPrimaryAccount(PrimaryAccount.newBuilder().setPrimaryAccountId("PA123").build())
+            .build();
+
+    PrimaryAccountDataResponse wrappedMessage = PrimaryAccountDataResponse.newBuilder()
+            .setPrimaryAccountData(primaryAccountData)
+            .build();
+
+    Message result = extractor.determineLmCoreEntity(wrappedMessage);
+
+    assertEquals(primaryAccountData, result);
+}
+@Test
+public void testDetermineLmCoreEntity_WithValidRepeatedMessageField() {
+    SubAccount subAccount = SubAccount.newBuilder().setSubAccountId("SA789").build();
+    PrimaryAccountData message = PrimaryAccountData.newBuilder()
+            .addSubAccounts(subAccount)
+            .build();
+
+    Message result = extractor.determineLmCoreEntity(message);
+
+    assertEquals(subAccount, result);
+}
+
+@Test
+public void testDetermineLmCoreEntity_WithNonMessageRepeatedField() {
+    SubAccount subAccount = SubAccount.getDefaultInstance(); // Default instance has no ID
+    PrimaryAccountData message = PrimaryAccountData.newBuilder()
+            .addSubAccounts(subAccount)
+            .build();
+
+    Message result = extractor.determineLmCoreEntity(message);
+
+    assertEquals(message, result);
+}
+
+@Test
+public void testDetermineLmCoreEntity_WithEmptyRepeatedField() {
+    PrimaryAccountData message = PrimaryAccountData.newBuilder().build(); // sub_accounts is empty
+
+    Message result = extractor.determineLmCoreEntity(message);
+
+    assertEquals(message, result);
+}
+
+@Test
+public void testProcessNestedField_WithValidNestedField() {
+    SubAccount subAccount = SubAccount.newBuilder().setSubAccountId("SA456").build();
+    PrimaryAccountData message = PrimaryAccountData.newBuilder()
+            .addSubAccounts(subAccount)
+            .build();
+
+    Map<String, List<Object>> idValues = new HashMap<>();
+    extractor.processNestedField(message.getDescriptorForType().findFieldByName("sub_accounts"), message, idValues, new HashSet<>(), new HashSet<>());
+
+    assertFalse(idValues.isEmpty());
+    assertTrue(idValues.get("SubAccount").contains("SA456"));
+}
+
+@Test
+public void testProcessNestedField_WithNonIdNestedMessage() {
+    SubAccount subAccount = SubAccount.newBuilder().build(); // No subAccountId
+    PrimaryAccountData message = PrimaryAccountData.newBuilder()
+            .addSubAccounts(subAccount)
+            .build();
+
+    Map<String, List<Object>> idValues = new HashMap<>();
+    extractor.processNestedField(message.getDescriptorForType().findFieldByName("sub_accounts"), message, idValues, new HashSet<>(), new HashSet<>());
+
+    assertTrue(idValues.isEmpty());
+}
+
+@Test
+public void testProcessNestedField_WithEmptyRepeatedField() {
+    PrimaryAccountData message = PrimaryAccountData.newBuilder()
+            .setPrimaryAccount(PrimaryAccount.newBuilder().setPrimaryAccountId("PA123").build())
+            .build(); // sub_accounts is empty
+
+    Map<String, List<Object>> idValues = new HashMap<>();
+    extractor.processNestedField(message.getDescriptorForType().findFieldByName("sub_accounts"), message, idValues, new HashSet<>(), new HashSet<>());
+
+    assertTrue(idValues.isEmpty());
+}
+@Test
+public void testProcessIdField_WithValidFieldValue() {
+    PrimaryAccount message = PrimaryAccount.newBuilder()
+            .setPrimaryAccountId("PA123")
+            .build(); // primaryAccountId is "PA123"
+
+    Map<String, List<Object>> idValues = new HashMap<>();
+    extractor.processIdField(message, message.getDescriptorForType().findFieldByName("primaryAccountId"), idValues);
+
+    assertEquals(1, idValues.size());
+    assertTrue(idValues.get("PrimaryAccount").contains("PA123"));
+}
+
+@Test
+public void testProcessIdField_WithEmptyFieldValue() {
+    PrimaryAccount message = PrimaryAccount.newBuilder()
+            .setPrimaryAccountId("")
+            .build(); // primaryAccountId is ""
+
+    Map<String, List<Object>> idValues = new HashMap<>();
+    extractor.processIdField(message, message.getDescriptorForType().findFieldByName("primaryAccountId"), idValues);
+
+    assertTrue(idValues.isEmpty());
+}
+
+@Test
+public void testProcessIdField_WithNullFieldValue() {
+    PrimaryAccount message = PrimaryAccount.newBuilder().build(); // primaryAccountId is null
+
+    Map<String, List<Object>> idValues = new HashMap<>();
+    extractor.processIdField(message, message.getDescriptorForType().findFieldByName("primaryAccountId"), idValues);
+
+    assertTrue(idValues.isEmpty());
+}
+
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.net.InetAddress;
+import java.util.List;
+import java.util.Optional;
+
+@ExtendWith(MockitoExtension.class)
+class AuditLoggingEventFactoryTest {
+
+    @Mock
+    private PiiLoggingProperties piiLoggingProperties;
+    
+    @Mock
+    private PiiFieldIdentifier piiFieldIdentifier;
+    
+    @Mock
+    private LdmFieldExtractor ldmFieldExtractor;
+
+    @Mock
+    private ServerHttpRequest request;
+    
+    @InjectMocks
+    private AuditLoggingEventFactory auditLoggingEventFactory;
+
+    @BeforeEach
+    void setup() throws Exception {
+        when(piiLoggingProperties.getProductId()).thenReturn("test-product-id");
+        when(piiLoggingProperties.getDeploymentId()).thenReturn("test-deployment-id");
+        when(piiFieldIdentifier.getPrivacyTagsForMessage(any())).thenReturn(List.of("SSN", "DOB"));
+        when(ldmFieldExtractor.getIds(any())).thenReturn(new LdmFieldExSummary());
+    }
+
+    @Test
+    void testConstructAuditLoggingEventObject() {
+        when(request.getMethod()).thenReturn(HttpMethod.POST);
+        List<AuditLoggingEvent> events = auditLoggingEventFactory.constructAuditLoggingEventObject(new PartySubAccountPrimaryAccountResponseData(), request);
+        assertNotNull(events);
+        assertFalse(events.isEmpty());
+        AuditLoggingEvent event = events.get(0);
+        assertEquals("test-product-id", event.getProductId().orElse(null));
+        assertEquals("test-deployment-id", event.getDeploymentId());
+        assertEquals(EventAction.WRITE, event.getEventAction());
+        assertEquals(List.of("SSN", "DOB"), event.getDataTypes());
+    }
+
+    @Test
+    void testGetStatusCode() {
+        var response = mock(javax.servlet.http.HttpServletResponse.class);
+        var attributes = mock(ServletRequestAttributes.class);
+        when(attributes.getResponse()).thenReturn(response);
+        RequestContextHolder.setRequestAttributes(attributes);
+
+        when(response.getStatus()).thenReturn(200);
+        assertEquals(HttpStatus.OK, auditLoggingEventFactory.getStatusCode());
+
+        when(response.getStatus()).thenReturn(500);
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, auditLoggingEventFactory.getStatusCode());
+    }
+
+    @Test
+    void testEventOutcomeAllow() {
+        var response = mock(javax.servlet.http.HttpServletResponse.class);
+        var attributes = mock(ServletRequestAttributes.class);
+        when(attributes.getResponse()).thenReturn(response);
+        RequestContextHolder.setRequestAttributes(attributes);
+
+        when(response.getStatus()).thenReturn(200);
+        AuditLoggingEvent event = new AuditLoggingEvent();
+        event.setEventOutcome(auditLoggingEventFactory.getStatusCode().is2xxSuccessful() ? EventOutcome.ALLOW : EventOutcome.DENY);
+        assertEquals(EventOutcome.ALLOW, event.getEventOutcome());
+    }
+
+    @Test
+    void testEventOutcomeDeny() {
+        var response = mock(javax.servlet.http.HttpServletResponse.class);
+        var attributes = mock(ServletRequestAttributes.class);
+        when(attributes.getResponse()).thenReturn(response);
+        RequestContextHolder.setRequestAttributes(attributes);
+
+        when(response.getStatus()).thenReturn(500);
+        AuditLoggingEvent event = new AuditLoggingEvent();
+        event.setEventOutcome(auditLoggingEventFactory.getStatusCode().is2xxSuccessful() ? EventOutcome.ALLOW : EventOutcome.DENY);
+        assertEquals(EventOutcome.DENY, event.getEventOutcome());
+    }
+}
+
