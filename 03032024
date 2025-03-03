@@ -259,3 +259,19 @@ public class PiiFieldIdentifier {
         return privacyTag != null && !privacyTag.isEmpty();
     }
 }
+
+private String getPrivacyTagFromField(final Descriptors.FieldDescriptor field) {
+    if (field.getOptions() == null || field.getOptions().getAllFields().isEmpty()) {
+        return "";
+    }
+
+    return field.getOptions().getAllFields().values().stream()
+            .filter(value -> value instanceof FieldInfoOption)
+            .map(value -> (FieldInfoOption) value)
+            .map(FieldInfoOption::getPiiPrivacyTag) // Directly get the tag
+            .map(Object::toString)
+            .filter(tag -> !tag.isEmpty()) // Ensure it's not empty
+            .findFirst()
+            .orElse("");
+}
+
