@@ -172,3 +172,15 @@ private Set<String> getPrivacyTagsForMessage(final Message rootMessage) {
     }
     return allowedAttributes;
 }
+
+
+private boolean isPiiField(final Descriptors.FieldDescriptor field) {
+    if (field.getOptions() == null || field.getOptions().getAllFields().isEmpty()) {
+        return false; // No options present
+    }
+
+    return field.getOptions().getAllFields().values().stream()
+            .filter(value -> value instanceof FieldInfoOption)
+            .map(value -> (FieldInfoOption) value)
+            .anyMatch(option -> option.hasIsPii() && option.getIsPii());
+}
