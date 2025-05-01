@@ -1,0 +1,5 @@
+Apologies, Steve — I misunderstood your previous comment. I’ve updated the code as per your suggestion and tried importing the bean from the actual class. However, it required multiple imports, and both TestMongoConfig and EncryptionConfig define beans with the same name, which caused conflicts.
+
+To avoid these issues, I decided to create a separate TestBeanConfig class specifically for integration testing.
+
+Let me know if you’d prefer a different approach.
