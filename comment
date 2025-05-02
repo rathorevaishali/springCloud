@@ -3,3 +3,13 @@ Apologies, Steve — I misunderstood your previous comment. I’ve updated the c
 To avoid these issues, I decided to create a separate TestBeanConfig class specifically for integration testing.
 
 Let me know if you’d prefer a different approach.
+
+
+Hi Randy,
+
+Thanks for sharing the JIRA ticket.
+
+I’ve already reviewed the details with Steve and have a clear understanding of the requirements. I’ve started working on it and will let you know if I run into any issues or need further guidance.
+
+Best regards,
+Vaishali
