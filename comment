@@ -1,15 +1,3 @@
-Apologies, Steve — I misunderstood your previous comment. I’ve updated the code as per your suggestion and tried importing the bean from the actual class. However, it required multiple imports, and both TestMongoConfig and EncryptionConfig define beans with the same name, which caused conflicts.
+there is a medical emergency at home—my grandfather’s health has gotten much worse over the past few days, and he is now in a critical condition. I will need to take a week off starting tomorrow to be with my family during this time.
 
-To avoid these issues, I decided to create a separate TestBeanConfig class specifically for integration testing.
-
-Let me know if you’d prefer a different approach.
-
-
-Hi Randy,
-
-Thanks for sharing the JIRA ticket.
-
-I’ve already reviewed the details with Steve and have a clear understanding of the requirements. I’ve started working on it and will let you know if I run into any issues or need further guidance.
-
-Best regards,
-Vaishali
+I’m aware there were plans for a visit to the Hyderabad location this week; however, due to the situation, I may not be available.
